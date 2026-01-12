@@ -40,6 +40,10 @@ CREATE TABLE "Cliente" (
     "id" SERIAL NOT NULL,
     "nombre" TEXT NOT NULL,
     "dni" TEXT,
+    "ruc" TEXT,
+    "direccion" TEXT,
+    "telefono" TEXT,
+    "email" TEXT,
     "empresaId" INTEGER,
 
     CONSTRAINT "Cliente_pkey" PRIMARY KEY ("id")
@@ -125,6 +129,12 @@ CREATE TABLE "Pago" (
     "metodo" "MetodoPago" NOT NULL,
     "fecha" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "comprobanteUrl" TEXT,
+    "tipoComprobante" TEXT,
+    "serie" TEXT,
+    "numero" INTEGER,
+    "sunatEstado" TEXT,
+    "sunatFecha" TIMESTAMP(3),
+    "sunatMonto" DECIMAL(10,2),
     "codigoOperacion" TEXT,
 
     CONSTRAINT "Pago_pkey" PRIMARY KEY ("id")
@@ -167,7 +177,7 @@ ALTER TABLE "Pedido" ADD CONSTRAINT "Pedido_usuarioId_fkey" FOREIGN KEY ("usuari
 ALTER TABLE "Pedido" ADD CONSTRAINT "Pedido_clienteId_fkey" FOREIGN KEY ("clienteId") REFERENCES "Cliente"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "DetallePedido" ADD CONSTRAINT "DetallePedido_pedidoId_fkey" FOREIGN KEY ("pedidoId") REFERENCES "Pedido"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "DetallePedido" ADD CONSTRAINT "DetallePedido_pedidoId_fkey" FOREIGN KEY ("pedidoId") REFERENCES "Pedido"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "DetallePedido" ADD CONSTRAINT "DetallePedido_productoId_fkey" FOREIGN KEY ("productoId") REFERENCES "Producto"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -182,4 +192,4 @@ ALTER TABLE "Pago" ADD CONSTRAINT "Pago_pedidoId_fkey" FOREIGN KEY ("pedidoId") 
 ALTER TABLE "Pago" ADD CONSTRAINT "Pago_cajaId_fkey" FOREIGN KEY ("cajaId") REFERENCES "CajaDiaria"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "MovimientoInventario" ADD CONSTRAINT "MovimientoInventario_productoId_fkey" FOREIGN KEY ("productoId") REFERENCES "Producto"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "MovimientoInventario" ADD CONSTRAINT "MovimientoInventario_productoId_fkey" FOREIGN KEY ("productoId") REFERENCES "Producto"("id") ON DELETE CASCADE ON UPDATE CASCADE;
