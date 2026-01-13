@@ -133,8 +133,6 @@ CREATE TABLE "Pago" (
     "serie" TEXT,
     "numero" INTEGER,
     "sunatEstado" TEXT,
-    "sunatFecha" TIMESTAMP(3),
-    "sunatMonto" DECIMAL(10,2),
     "codigoOperacion" TEXT,
 
     CONSTRAINT "Pago_pkey" PRIMARY KEY ("id")

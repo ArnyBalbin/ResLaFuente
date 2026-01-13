@@ -6,22 +6,17 @@ datasource db {
   provider = "postgresql"
 }
 
-// ==========================================
-// 1. USUARIOS Y SEGURIDAD
-// ==========================================
-
+// 1. USUARIOS
 model Usuario {
-  id        Int      @id @default(autoincrement())
+  id        Int          @id @default(autoincrement())
   nombre    String
-  email     String   @unique
+  email     String       @unique
   password  String
-  rol       Rol      @default(MOZO)
-  activo    Boolean  @default(true)
-  creadoEn  DateTime @default(now())
-
-  // Relaciones
-  pedidos   Pedido[] 
-  cajas     CajaDiaria[] // Un usuario puede abrir muchas cajas (historial)
+  rol       Rol          @default(MOZO)
+  activo    Boolean      @default(true)
+  creadoEn  DateTime     @default(now())
+  pedidos   Pedido[]
+  cajas     CajaDiaria[]
 }
 
 enum Rol {
@@ -31,10 +26,7 @@ enum Rol {
   CAJA
 }
 
-// ==========================================
-// 2. CLIENTES Y EMPRESAS (CRÉDITOS)
-// ==========================================
-
+// 2. CLIENTES Y EMPRESAS
 model Empresa {
   id          Int       @id @default(autoincrement())
   razonSocial String
@@ -42,28 +34,23 @@ model Empresa {
   direccion   String?
   telefono    String?
   activo      Boolean   @default(true)
-
-  empleados   Cliente[] 
+  empleados   Cliente[]
 }
 
 model Cliente {
-  id          Int      @id @default(autoincrement())
-  nombre      String   
-  dni         String?
-  ruc         String?  // Para Facturas de Persona Natural (RUC 10)
-  direccion   String?  // Vital para Facturación y Delivery
-  telefono    String?  // Para contactar o enviar la boleta
-  email       String?  // Para enviar el XML/PDF por correo
-  empresaId   Int?     // Si tiene ID, es corporativo
-  
-  empresa     Empresa? @relation(fields: [empresaId], references: [id])
-  pedidos     Pedido[]
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  dni       String?
+  ruc       String? // Para Facturas Persona Natural
+  direccion String?
+  telefono  String?
+  email     String?
+  empresaId Int?
+  empresa   Empresa? @relation(fields: [empresaId], references: [id])
+  pedidos   Pedido[]
 }
 
-// ==========================================
-// 3. PRODUCTOS Y MENÚ (INVENTARIO)
-// ==========================================
-
+// 3. PRODUCTOS
 model Categoria {
   id        Int        @id @default(autoincrement())
   nombre    String
@@ -71,57 +58,49 @@ model Categoria {
 }
 
 model Producto {
-  id             Int       @id @default(autoincrement())
-  nombre         String
-  descripcion    String?
-  precio         Decimal   @db.Decimal(10, 2)
-  imagenUrl      String?
-  categoriaId    Int
-  
-  // Lógica de Negocio
-  esProductoFinal Boolean  @default(true) // TRUE=Gaseosa (Stock), FALSE=Lomo (Cocina)
-  stock           Int?     @default(0)
-  disponibleHoy   Boolean  @default(true) // Para ocultar platos agotados del día
-
-  categoria       Categoria @relation(fields: [categoriaId], references: [id])
+  id              Int                    @id @default(autoincrement())
+  nombre          String
+  descripcion     String?
+  precio          Decimal                @db.Decimal(10, 2)
+  imagenUrl       String?
+  categoriaId     Int
+  esProductoFinal Boolean                @default(true)
+  stock           Int?                   @default(0)
+  disponibleHoy   Boolean                @default(true)
+  categoria       Categoria              @relation(fields: [categoriaId], references: [id])
   detallesPedido  DetallePedido[]
   movimientos     MovimientoInventario[]
 }
 
-// ==========================================
-// 4. OPERACIONES (PEDIDOS)
-// ==========================================
-
+// 4. OPERACIONES
 model Mesa {
-  id        Int     @id @default(autoincrement())
-  numero    String  @unique // "Mesa 1"
-  ocupada   Boolean @default(false) 
-  
-  pedidos   Pedido[]
+  id      Int      @id @default(autoincrement())
+  numero  String   @unique
+  ocupada Boolean  @default(false)
+  pedidos Pedido[]
 }
 
 model Pedido {
-  id            Int            @id @default(autoincrement())
-  mesaId        Int
-  usuarioId     Int            // Mozo
-  clienteId     Int?           // Cliente (opcional)
-  estado        EstadoPedido   @default(PENDIENTE)
-  total         Decimal        @db.Decimal(10, 2)
-  fecha         DateTime       @default(now())
-  
-  mesa          Mesa           @relation(fields: [mesaId], references: [id])
-  usuario       Usuario        @relation(fields: [usuarioId], references: [id])
-  cliente       Cliente?       @relation(fields: [clienteId], references: [id])
-  detalles      DetallePedido[]
-  pagos         Pago[]         // Un pedido puede tener varios pagos
+  id        Int             @id @default(autoincrement())
+  mesaId    Int
+  usuarioId Int
+  clienteId Int?
+  estado    EstadoPedido    @default(PENDIENTE)
+  total     Decimal         @db.Decimal(10, 2)
+  fecha     DateTime        @default(now())
+  mesa      Mesa            @relation(fields: [mesaId], references: [id])
+  usuario   Usuario         @relation(fields: [usuarioId], references: [id])
+  cliente   Cliente?        @relation(fields: [clienteId], references: [id])
+  detalles  DetallePedido[]
+  pagos     Pago[]
 }
 
 enum EstadoPedido {
-  PENDIENTE   // Enviado a cocina
-  EN_PROCESO  // Cocinando
-  LISTO       // Para recoger
-  SERVIDO     // En mesa
-  CERRADO     // Pagado
+  PENDIENTE
+  EN_PROCESO
+  LISTO
+  SERVIDO
+  CERRADO
   CANCELADO
 }
 
@@ -131,51 +110,43 @@ model DetallePedido {
   productoId     Int
   cantidad       Int
   precioUnitario Decimal  @db.Decimal(10, 2)
-  notas          String?  // "Sin ají"
-
+  notas          String?
   pedido         Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
   producto       Producto @relation(fields: [productoId], references: [id])
 }
 
-// ==========================================
-// 5. CAJA, PAGOS Y TURNOS (LO NUEVO)
-// ==========================================
-
+// 5. CAJA Y PAGOS
 model CajaDiaria {
   id            Int       @id @default(autoincrement())
-  usuarioId     Int       // Quién abrió la caja
+  usuarioId     Int
   fechaApertura DateTime  @default(now())
-  fechaCierre   DateTime? // Null hasta que cierre el turno
-  montoInicial  Decimal   @db.Decimal(10, 2) // Sencillo base
-  montoFinal    Decimal?  @db.Decimal(10, 2) // Cuánto contó al cerrar
-  observaciones String?   // "Sobraron 2 soles"
-  estado        Boolean   @default(true) // True=Abierta, False=Cerrada
-
+  fechaCierre   DateTime?
+  montoInicial  Decimal   @db.Decimal(10, 2)
+  montoFinal    Decimal?  @db.Decimal(10, 2)
+  observaciones String?
+  estado        Boolean   @default(true)
   usuario       Usuario   @relation(fields: [usuarioId], references: [id])
-  pagos         Pago[]    // Todos los pagos entran a ESTA caja
+  pagos         Pago[]
 }
 
 model Pago {
-  id             Int         @id @default(autoincrement())
-  pedidoId       Int
-  cajaId         Int         // VITAL: Saber a qué caja entró el dinero
-  monto          Decimal     @db.Decimal(10, 2)
-  metodo         MetodoPago
-  fecha          DateTime    @default(now())
+  id              Int        @id @default(autoincrement())
+  pedidoId        Int
+  cajaId          Int
+  monto           Decimal    @db.Decimal(10, 2)
+  metodo          MetodoPago
+  fecha           DateTime   @default(now())
   
   // Facturación Electrónica
-  comprobanteUrl String?     // PDF de Nubefact
-  tipoComprobante String?    // "BOLETA" o "FACTURA"
-  serie           String?    // Ej: "B001" o "F001"
-  numero          Int?       // Ej: 450 (Para poder buscar "Boleta 450")
-  sunatEstado     String?    // "ACEPTADA", "ANULADA", "RECHAZADA" (Vital para auditoría)
-  sunatFecha      DateTime?  // Fecha de la respuesta de SUNAT
-  sunatMonto      Decimal?   @db.Decimal(10, 2) // Monto de la respuesta de SUNAT
+  comprobanteUrl  String?
+  tipoComprobante String?
+  serie           String?
+  numero          Int?
+  sunatEstado     String?
+  codigoOperacion String?
   
-  codigoOperacion String?    // Para Yape/Tarjeta (Nro de operación)
-
-  pedido         Pedido      @relation(fields: [pedidoId], references: [id])
-  caja           CajaDiaria  @relation(fields: [cajaId], references: [id])
+  pedido          Pedido     @relation(fields: [pedidoId], references: [id])
+  caja            CajaDiaria @relation(fields: [cajaId], references: [id])
 }
 
 enum MetodoPago {
@@ -185,19 +156,15 @@ enum MetodoPago {
   CREDITO_EMPRESA
 }
 
-// ==========================================
-// 6. INVENTARIO (KARDEX)
-// ==========================================
-
+// 6. INVENTARIO
 model MovimientoInventario {
-  id          Int             @id @default(autoincrement())
-  productoId  Int
-  tipo        TipoMovimiento
-  cantidad    Int
-  fecha       DateTime        @default(now())
-  motivo      String?         // "Compra", "Venta #123", "Merma"
-
-  producto    Producto        @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  id         Int            @id @default(autoincrement())
+  productoId Int
+  tipo       TipoMovimiento
+  cantidad   Int
+  fecha      DateTime       @default(now())
+  motivo     String?
+  producto   Producto       @relation(fields: [productoId], references: [id], onDelete: Cascade)
 }
 
 enum TipoMovimiento {
