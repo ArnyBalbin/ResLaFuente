@@ -10,12 +10,14 @@ export const crearCliente = async (cliente: any) => {
   return data;
 }
 
-export const actualizarCliente = async (id: number, cliente: any) => {
-  const { data } = await api.patch(`/clientes/${id}`, cliente);
-  return data;
-}
+export const actualizarCliente = (id: number, data: any) => {
+  if (data.tipoEntidad === 'EMPRESA') {
+    return api.patch(`/empresas/${id}`, data);
+  }
+  return api.patch(`/clientes/${id}`, data);
+};
 
-export const eliminarCliente = async (id: number) => {
-  const { data } = await api.delete(`/clientes/${id}`);
+export const eliminarCliente = async (id: number, tipoEntidad: string) => {
+  const { data } = await api.delete(`/clientes/${id}?tipo=${tipoEntidad}`);
   return data;
-}
+};

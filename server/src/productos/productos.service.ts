@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateProductoDto } from './dto/create-producto.dto';
 import { UpdateProductoDto } from './dto/update-producto.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -7,9 +7,16 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class ProductosService {
   constructor(private prisma: PrismaService) {}
 
-  create(createProductoDto: CreateProductoDto) {
+  async create(createProductoDto: CreateProductoDto) {
     return this.prisma.producto.create({
-      data: createProductoDto,
+      data: {
+        nombre: createProductoDto.nombre,
+        precio: createProductoDto.precio,
+        imagenUrl: createProductoDto.imagenUrl,
+        esProductoFinal: createProductoDto.esProductoFinal,
+        stock: createProductoDto.esProductoFinal ? 0 : null,
+        categoriaId: createProductoDto.categoriaId
+      }
     });
   }
 
@@ -49,9 +56,12 @@ export class ProductosService {
     });
   }
 
-  remove(id: number) {
-    return this.prisma.producto.delete({
-      where: { id },
-    });
+  async remove(id: number) {
+    const enPedidos = await this.prisma.detallePedido.findFirst({ where: { productoId: id } });
+    if (enPedidos) {
+      throw new BadRequestException('No se puede eliminar: Este producto está en pedidos históricos. Mejor desactívalo.');
+    }
+
+    return this.prisma.producto.delete({ where: { id } });
   }
 }

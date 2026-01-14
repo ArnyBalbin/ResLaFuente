@@ -22,26 +22,31 @@ export class UsuariosService {
   }
 
   findAll() {
-    return this.prisma.usuario.findMany();
-  }
-
-  findOne(id: number) {
-    return this.prisma.usuario.findUnique({
-      where: { id },
+    return this.prisma.usuario.findMany({
+      orderBy: { nombre: 'asc' },
     });
   }
 
-  update(id: number, updateUsuarioDto: UpdateUsuarioDto) {
+  async findOne(id: number) {
+    const usuario = await this.prisma.usuario.findUnique({ where: { id } });
+    if (!usuario) throw new BadRequestException('Usuario no encontrado');
+    return usuario;
+  }
+
+  async update(id: number, updateUsuarioDto: UpdateUsuarioDto) {
+    if (!updateUsuarioDto.password) {
+      delete updateUsuarioDto.password;
+    }
+
     return this.prisma.usuario.update({
       where: { id },
-      data: updateUsuarioDto,
+      data: updateUsuarioDto
     });
   }
 
   async remove(id: number) {
-    return this.prisma.usuario.update({
-      where: { id },
-      data: { activo: false }
+    return this.prisma.usuario.delete({
+      where: { id }
     });
   }
 

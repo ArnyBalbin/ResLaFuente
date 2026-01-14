@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsNumber, Min, IsInt } from 'class-validator';
 
 export class CreateEmpresaDto {
   @IsString()
@@ -17,7 +17,18 @@ export class CreateEmpresaDto {
   @IsOptional()
   telefono?: string;
 
-  @IsBoolean()
   @IsOptional()
-  activo?: boolean;
+  @IsBoolean()
+  tieneCredito?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  limiteCredito?: number; // Ej: 5000 soles
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  diaCierre?: number;
+  
 }

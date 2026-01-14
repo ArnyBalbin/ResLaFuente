@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateCategoriaDto } from './dto/create-categoria.dto';
 import { UpdateCategoriaDto } from './dto/update-categoria.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -15,7 +15,8 @@ export class CategoriasService {
 
   findAll() {
     return this.prisma.categoria.findMany({
-      include: { productos: true }
+      orderBy: { nombre: 'asc' },
+      include: { _count: { select: { productos: true } } }
     });
   }
 
@@ -32,9 +33,19 @@ export class CategoriasService {
     });
   }
 
-  remove(id: number) {
-    return this.prisma.categoria.delete({
+  async remove(id: number) {
+    // Validación: No borrar si tiene productos
+    const categoria = await this.prisma.categoria.findUnique({
       where: { id },
+      include: { productos: true }
+    });
+
+    if (categoria && categoria.productos.length > 0) {
+      throw new BadRequestException('No se puede eliminar: Esta categoría tiene productos asociados.');
+    }
+
+    return this.prisma.categoria.delete({
+      where: { id }
     });
   }
 }

@@ -28,26 +28,31 @@ enum Rol {
 
 // 2. CLIENTES Y EMPRESAS
 model Empresa {
-  id          Int       @id @default(autoincrement())
-  razonSocial String
-  ruc         String?   @unique
-  direccion   String?
-  telefono    String?
-  activo      Boolean   @default(true)
-  empleados   Cliente[]
+  id             Int       @id @default(autoincrement())
+  razonSocial    String
+  ruc            String    @unique
+  direccion      String?
+  telefono       String?
+  
+  tieneCredito   Boolean   @default(false)
+  limiteCredito  Decimal   @default(0)
+  creditoUsado   Decimal   @default(0)
+  diaCierre      Int       @default(30)
+  
+  empleados      Cliente[]
+  pedidosCredito Pedido[]
 }
 
 model Cliente {
-  id        Int      @id @default(autoincrement())
-  nombre    String
-  dni       String?
-  ruc       String? // Para Facturas Persona Natural
-  direccion String?
-  telefono  String?
-  email     String?
-  empresaId Int?
-  empresa   Empresa? @relation(fields: [empresaId], references: [id])
-  pedidos   Pedido[]
+  id              Int      @id @default(autoincrement())
+  nombre          String
+  dni             String?  @unique
+  email           String?
+  
+  empresaId       Int?
+  empresa         Empresa? @relation(fields: [empresaId], references: [id])
+  
+  pedidos         Pedido[]
 }
 
 // 3. PRODUCTOS
@@ -85,12 +90,21 @@ model Pedido {
   mesaId    Int
   usuarioId Int
   clienteId Int?
+  
+  // --- NUEVOS CAMPOS PARA CRÉDITO CORPORATIVO ---
+  esCredito Boolean         @default(false) // <--- AGREGAR
+  empresaId Int?            // <--- AGREGAR
+  empresa   Empresa?        @relation(fields: [empresaId], references: [id]) // <--- AGREGAR
+  // ----------------------------------------------
+
   estado    EstadoPedido    @default(PENDIENTE)
   total     Decimal         @db.Decimal(10, 2)
   fecha     DateTime        @default(now())
+  
   mesa      Mesa            @relation(fields: [mesaId], references: [id])
   usuario   Usuario         @relation(fields: [usuarioId], references: [id])
   cliente   Cliente?        @relation(fields: [clienteId], references: [id])
+  
   detalles  DetallePedido[]
   pagos     Pago[]
 }
@@ -102,6 +116,7 @@ enum EstadoPedido {
   SERVIDO
   CERRADO
   CANCELADO
+  POR_FACTURAR
 }
 
 model DetallePedido {

@@ -8,32 +8,43 @@ export class EmpresasService {
   constructor(private prisma: PrismaService) {}
 
   async create(createEmpresaDto: CreateEmpresaDto) {
-    // Validar que el RUC no exista ya
+    // 1. Validar RUC único
     const existe = await this.prisma.empresa.findUnique({
       where: { ruc: createEmpresaDto.ruc }
     });
+    
+    if (existe) throw new BadRequestException('Ya existe una empresa con este RUC');
 
-    if (existe) {
-      throw new BadRequestException('Ya existe una empresa con ese RUC');
-    }
-
+    // 2. Crear Empresa
     return this.prisma.empresa.create({
-      data: createEmpresaDto,
+      data: {
+        razonSocial: createEmpresaDto.razonSocial,
+        ruc: createEmpresaDto.ruc,
+        direccion: createEmpresaDto.direccion,
+        telefono: createEmpresaDto.telefono,
+        tieneCredito: createEmpresaDto.tieneCredito || false,
+        limiteCredito: createEmpresaDto.limiteCredito || 0,
+        diaCierre: createEmpresaDto.diaCierre || 30
+      }
     });
   }
 
   findAll() {
     return this.prisma.empresa.findMany({
-      where: { activo: true },
-      include: { empleados: true }
+      include: {
+        _count: { select: { empleados: true } } // Para saber cuántos empleados tiene
+      },
+      orderBy: { razonSocial: 'asc' }
     });
   }
 
-  findOne(id: number) {
-    return this.prisma.empresa.findUnique({
+  async findOne(id: number) {
+    const empresa = await this.prisma.empresa.findUnique({ 
       where: { id },
       include: { empleados: true }
     });
+    if (!empresa) throw new BadRequestException('Empresa no encontrada');
+    return empresa;
   }
 
   update(id: number, updateEmpresaDto: UpdateEmpresaDto) {
@@ -43,10 +54,17 @@ export class EmpresasService {
     });
   }
 
-  remove(id: number) {
-    return this.prisma.empresa.update({
+  async remove(id: number) {
+    // Validar si tiene empleados o deuda antes de borrar
+    const empresa = await this.prisma.empresa.findUnique({
       where: { id },
-      data: { activo: false } 
+      include: { empleados: true, pedidosCredito: true }
     });
+
+    if (empresa && (empresa.empleados.length > 0 || empresa.pedidosCredito.length > 0)) {
+      throw new BadRequestException('No se puede eliminar: La empresa tiene empleados o historial de crédito.');
+    }
+
+    return this.prisma.empresa.delete({ where: { id } });
   }
 }

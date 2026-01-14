@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, IsOptional, IsArray, ValidateNested, IsString, Min } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsArray, ValidateNested, IsString, Min, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class DetallePedidoDto {
@@ -26,6 +26,14 @@ export class CreatePedidoDto {
   @IsInt()
   @IsOptional()
   clienteId?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  esCredito?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  empresaId?: number;
 
   @IsArray()
   @ValidateNested({ each: true })

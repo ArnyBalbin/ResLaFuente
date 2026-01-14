@@ -8,7 +8,8 @@ export class PedidosService {
   constructor(private prisma: PrismaService) {}
 
   async create(createPedidoDto: CreatePedidoDto) {
-    const { mesaId, usuarioId, clienteId, detalles } = createPedidoDto;
+    // 1. Desestructuramos los nuevos campos (esCredito, empresaId)
+    const { mesaId, usuarioId, clienteId, detalles, esCredito, empresaId } = createPedidoDto;
 
     const mesa = await this.prisma.mesa.findUnique({ where: { id: mesaId } });
     if (!mesa) throw new NotFoundException('Mesa no encontrada');
@@ -18,6 +19,7 @@ export class PedidosService {
     
     const detallesConPrecio: any[] = [];
 
+    // 2. Calculamos el total y verificamos stock (Igual que antes)
     for (const item of detalles) {
       const producto = await this.prisma.producto.findUnique({ where: { id: item.productoId } });
       
@@ -37,15 +39,45 @@ export class PedidosService {
       });
     }
 
+    // 3. LOGICA DE CRÉDITO (Validación antes de guardar) <--- NUEVO
+    if (esCredito && empresaId) {
+      const empresa = await this.prisma.empresa.findUnique({ where: { id: empresaId } });
+      
+      if (!empresa) throw new BadRequestException('Empresa no encontrada');
+      if (!empresa.tieneCredito) throw new BadRequestException('Esta empresa no tiene crédito habilitado');
+
+      // Validar si tiene saldo suficiente (Limite - Usado >= Total Nuevo)
+      const saldoDisponible = Number(empresa.limiteCredito) - Number(empresa.creditoUsado);
+      
+      if (totalCalculado > saldoDisponible) {
+        throw new BadRequestException(`Crédito insuficiente. Disponible: S/ ${saldoDisponible.toFixed(2)}`);
+      }
+    }
+
     return await this.prisma.$transaction(async (tx) => {
       
+      // 4. Si es crédito, aumentamos la deuda de la empresa <--- NUEVO
+      if (esCredito && empresaId) {
+        await tx.empresa.update({
+          where: { id: empresaId },
+          data: { creditoUsado: { increment: totalCalculado } }
+        });
+      }
+
       const pedido = await tx.pedido.create({
         data: {
           mesaId,
           usuarioId,
           clienteId,
+          // Guardamos info de crédito
+          esCredito: esCredito || false, 
+          empresaId: esCredito ? empresaId : null,
+          
           total: totalCalculado,
-          estado: 'PENDIENTE',
+          // Si es crédito, nace como 'POR_FACTURAR' (o PENDIENTE si prefieres que cocina lo vea igual)
+          // Usaremos 'PENDIENTE' para asegurar que entre al flujo de cocina normal
+          estado: 'PENDIENTE', 
+          
           detalles: {
             create: detallesConPrecio
           }
@@ -58,6 +90,7 @@ export class PedidosService {
         data: { ocupada: true }
       });
 
+      // 5. Descuento de inventario (Igual que antes)
       for (const item of detalles) {
         const prod = await tx.producto.findUnique({ where: { id: item.productoId } });
 
@@ -82,10 +115,12 @@ export class PedidosService {
     });
   }
 
+  // OJO: Asegúrate que la cocina vea los pedidos aunque sean de crédito
   findForKitchen() {
     return this.prisma.pedido.findMany({
       where: {
-        estado: { in: ['PENDIENTE', 'EN_PROCESO'] }
+        // Agregamos 'POR_FACTURAR' por si decidimos usar ese estado luego
+        estado: { in: ['PENDIENTE', 'EN_PROCESO', 'POR_FACTURAR'] } 
       },
       include: {
         detalles: {
@@ -99,7 +134,13 @@ export class PedidosService {
 
   findAll() {
     return this.prisma.pedido.findMany({
-      include: { mesa: true, usuario: true, detalles: true },
+      // Incluimos la empresa para ver quién paga en el listado general <--- NUEVO
+      include: { 
+        mesa: true, 
+        usuario: true, 
+        detalles: true,
+        empresa: true 
+      },
       orderBy: { fecha: 'desc' }
     });
   }
@@ -110,11 +151,8 @@ export class PedidosService {
       include: {
         mesa: true,
         usuario: true,
-        cliente: {
-          include: { 
-            empresa: true
-          }
-        },
+        cliente: true,
+        empresa: true, // <--- NUEVO: Incluir datos de la empresa pagadora
         detalles: {
           include: { 
             producto: true

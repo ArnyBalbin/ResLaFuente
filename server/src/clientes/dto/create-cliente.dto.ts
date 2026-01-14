@@ -9,18 +9,6 @@ export class CreateClienteDto {
   @IsOptional()
   dni?: string;
 
-  @IsString()
-  @IsOptional()
-  ruc?: string;
-
-  @IsString()
-  @IsOptional()
-  direccion?: string;
-
-  @IsString()
-  @IsOptional()
-  telefono?: string;
-
   @IsEmail()
   @IsOptional()
   email?: string;

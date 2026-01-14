@@ -8,6 +8,10 @@ import { MesasPage } from '@/pages/MesasPage';
 import { CocinaPage } from '@/pages/CocinaPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { CajaPage } from '@/pages/CajaPage';
+import { UsuariosPage } from '@/pages/admin/UsuariosPage';
+import { CategoriasPage } from '@/pages/admin/CategoriasPage';
+import { ProductosPage } from '@/pages/admin/ProductosPage';
+import { ClientesPage } from '@/pages/admin/ClientesPage';
 import { InventarioPage } from './pages/InventarioPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 
@@ -34,6 +38,10 @@ function App() {
             <Route path="/" element={<DashboardLayout />}>
               <Route index element={<Navigate to="/mesas" replace />} />
               <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="admin/usuarios" element={<UsuariosPage />} />
+              <Route path="admin/clientes" element={<ClientesPage />} />
+              <Route path="admin/categorias" element={<CategoriasPage />} />
+              <Route path="admin/productos" element={<ProductosPage />} />
               <Route path="mesas" element={<MesasPage />} />
               <Route path="tomar-pedido" element={<TomarPedidoPage />} />
               <Route path="cocina" element={<CocinaPage />} />

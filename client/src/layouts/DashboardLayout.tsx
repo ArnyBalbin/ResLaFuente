@@ -1,6 +1,6 @@
 import { Outlet, Link } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
-import { LayoutDashboard, UtensilsCrossed, LogOut, DollarSign, History, PieChart } from 'lucide-react';
+import { Users, Layers, Briefcase, Coffee, LayoutDashboard, UtensilsCrossed, LogOut, DollarSign, History, PieChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export const DashboardLayout = () => {
@@ -27,7 +27,34 @@ export const DashboardLayout = () => {
             </Link>
           )}
 
-          {/* 1. MESAS (Visible para Admin, Mozo y Cajero) */}
+          {['ADMIN'].includes(user?.rol || '') && (
+            <>
+              <div className="px-4 py-2 mt-6 mb-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Administración
+              </div>
+
+              <Link to="/admin/usuarios" className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-lg transition-colors">
+                <Users size={20} />
+                <span className="font-medium">Usuarios</span>
+              </Link>
+
+              <Link to="/admin/clientes" className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-lg transition-colors">
+                <Briefcase size={18} /> 
+                <span className="font-medium">Clientes / Empresas</span>
+              </Link>
+
+              <Link to="/admin/categorias" className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-lg transition-colors">
+                <Layers size={20} />
+                <span className="font-medium">Categorías</span>
+              </Link>
+
+              <Link to="/admin/productos" className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-lg transition-colors">
+                <Coffee size={20} />
+                <span className="font-medium">Productos</span>
+              </Link>
+            </>
+          )}
+
           {['ADMIN', 'MOZO', 'CAJERO'].includes(user?.rol || '') && (
             <Link to="/mesas" className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-lg transition-colors">
               <LayoutDashboard size={20} />
@@ -35,7 +62,6 @@ export const DashboardLayout = () => {
             </Link>
           )}
 
-          {/* 2. COCINA (Visible para Admin y Cocina) */}
           {['ADMIN', 'COCINA'].includes(user?.rol || '') && (
             <Link to="/cocina" className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-lg transition-colors">
               <UtensilsCrossed size={20} />
@@ -43,7 +69,6 @@ export const DashboardLayout = () => {
             </Link>
           )}
 
-          {/* 3. CAJA (Visible para Admin y Cajero) */}
           {['ADMIN', 'CAJERO'].includes(user?.rol || '') && (
             <Link to="/caja" className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-lg transition-colors">
               <DollarSign size={20} />
@@ -51,7 +76,6 @@ export const DashboardLayout = () => {
             </Link>
           )}
 
-          {/* 4. INVENTARIO (Solo Admin) */}
           {['ADMIN'].includes(user?.rol || '') && (
             <Link to="/inventario" className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-lg transition-colors">
               <History size={20} />
@@ -65,7 +89,7 @@ export const DashboardLayout = () => {
           <Button
             variant="ghost"
             className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50"
-            onClick={logout} // <--- Conectamos el botón Salir
+            onClick={logout}
           >
             <LogOut size={20} className="mr-2" />
             Cerrar Sesión
@@ -73,7 +97,6 @@ export const DashboardLayout = () => {
         </div>
       </aside>
 
-      {/* CONTENIDO PRINCIPAL */}
       <main className="flex-1 md:ml-64 transition-all">
         {/* Header móvil */}
         <header className="bg-white border-b border-slate-200 p-4 md:hidden flex justify-between items-center sticky top-0 z-20">

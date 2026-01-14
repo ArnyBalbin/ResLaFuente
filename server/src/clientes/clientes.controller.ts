@@ -17,12 +17,6 @@ export class ClientesController {
     return this.clientesService.findAll();
   }
 
-  // Endpoint especial: GET /clientes/buscar?doc=12345678
-  @Get('buscar')
-  findByDoc(@Query('doc') doc: string) {
-    return this.clientesService.findByDoc(doc);
-  }
-
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.clientesService.findOne(+id);
