@@ -22,5 +22,5 @@ export class CreateUsuarioDto {
 
   @IsEnum(Rol)
   @IsOptional()
-  rol?: Rol; // Si no envían rol, será MOZO por defecto (según el schema)
+  rol?: Rol;
 }

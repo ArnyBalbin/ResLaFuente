@@ -8,18 +8,15 @@ export class FilesController {
   
   @Post('upload')
   @UseInterceptors(FileInterceptor('file', {
-    // 1. CONFIGURACIÓN DE ALMACENAMIENTO
     storage: diskStorage({
-      destination: './uploads', // Carpeta donde se guardará
+      destination: './uploads',
       filename: (req, file, cb) => {
-        // Generar nombre único: "123456789-nombre.jpg"
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         const ext = extname(file.originalname);
         const filename = `${uniqueSuffix}${ext}`;
         cb(null, filename);
       }
     }),
-    // 2. FILTRO (SOLO IMÁGENES)
     fileFilter: (req, file, cb) => {
       if (!file.mimetype.match(/\/(jpg|jpeg|png|gif)$/)) {
         return cb(new BadRequestException('Solo se permiten imágenes (jpg, jpeg, png, gif)'), false);
@@ -32,9 +29,6 @@ export class FilesController {
       throw new BadRequestException('No se envió ningún archivo');
     }
 
-    // 3. RETORNAR LA URL PÚBLICA
-    // Esto es lo que guardarás en tu base de datos (campo imagenUrl)
-    // Asegúrate de que http://localhost:3000 coincida con tu puerto real
     const url = `http://localhost:3000/uploads/${file.filename}`;
     
     return {

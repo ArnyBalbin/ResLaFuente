@@ -19,8 +19,8 @@ import { FilesModule } from './files/files.module';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
-      rootPath: join(process.cwd(), 'uploads'), // Busca la carpeta 'uploads'
-      serveRoot: '/uploads', // La URL será localhost:3000/uploads/foto.jpg
+      rootPath: join(process.cwd(), 'uploads'),
+      serveRoot: '/uploads',
     }),
     PrismaModule, ProductosModule, CategoriasModule, MesasModule, PedidosModule, UsuariosModule, EmpresasModule, ClientesModule, CajaModule, PagosModule, FacturacionModule, FilesModule],
   controllers: [AppController],

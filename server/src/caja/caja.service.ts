@@ -6,13 +6,11 @@ import { PrismaService } from '../prisma/prisma.service';
 export class CajaService {
   constructor(private prisma: PrismaService) {}
 
-  // 1. ABRIR CAJA
   async abrir(createCajaDto: CreateCajaDto) {
-    // Verificar si el usuario ya tiene una caja abierta
     const cajaAbierta = await this.prisma.cajaDiaria.findFirst({
       where: {
         usuarioId: createCajaDto.usuarioId,
-        fechaCierre: null // Significa que sigue abierta
+        fechaCierre: null
       }
     });
 
@@ -24,12 +22,11 @@ export class CajaService {
       data: {
         usuarioId: createCajaDto.usuarioId,
         montoInicial: createCajaDto.montoInicial,
-        estado: true // Abierta
+        estado: true
       }
     });
   }
 
-  // 2. CERRAR CAJA (ARQUEO)
   async cerrar(id: number, cerrarCajaDto: CerrarCajaDto) {
     const caja = await this.prisma.cajaDiaria.findUnique({ where: { id } });
     
@@ -42,12 +39,11 @@ export class CajaService {
         fechaCierre: new Date(),
         montoFinal: cerrarCajaDto.montoFinal,
         observaciones: cerrarCajaDto.observaciones,
-        estado: false // Cerrada
+        estado: false
       }
     });
   }
 
-  // 3. CONSULTAR ESTADO ACTUAL (Para saber si puedo cobrar)
   async obtenerCajaAbierta(usuarioId: number) {
     const caja = await this.prisma.cajaDiaria.findFirst({
       where: {
@@ -55,7 +51,7 @@ export class CajaService {
         fechaCierre: null
       },
       include: {
-        pagos: true // Ver cuánto se ha vendido en este turno
+        pagos: true
       }
     });
     return caja || { mensaje: 'No hay caja abierta' };

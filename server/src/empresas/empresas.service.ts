@@ -24,8 +24,8 @@ export class EmpresasService {
 
   findAll() {
     return this.prisma.empresa.findMany({
-      where: { activo: true }, // Solo traemos las activas por defecto
-      include: { empleados: true } // Opcional: ver quiénes trabajan ahí
+      where: { activo: true },
+      include: { empleados: true }
     });
   }
 

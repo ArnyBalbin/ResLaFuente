@@ -49,7 +49,6 @@ export class ProductosService {
     });
   }
 
-  // 6. ELIMINAR
   remove(id: number) {
     return this.prisma.producto.delete({
       where: { id },
