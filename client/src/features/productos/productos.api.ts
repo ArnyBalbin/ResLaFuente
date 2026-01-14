@@ -7,9 +7,21 @@ export const obtenerProductos = async (): Promise<Producto[]> => {
   return data;
 };
 
-// Traer solo las categorías (para las pestañas)
-// Nota: Si no creaste un endpoint especifico de categorias en el backend, 
-// no te preocupes, usaremos un truco en el frontend para extraerlas de los productos.
+export const crearProducto = async (producto: any) => {
+  const { data } = await api.post('/productos', producto);
+  return data;
+};
+
+export const actualizarProducto = async (id: number, producto: any) => {
+  const { data } = await api.patch(`/productos/${id}`, producto);
+  return data;
+}
+
+export const eliminarProducto = async (id: number) => {
+  const { data } = await api.delete(`/productos/${id}`);
+  return data;
+}
+
 export const obtenerCategorias = async (): Promise<Categoria[]> => {
   const { data } = await api.get('/categorias'); 
   return data;

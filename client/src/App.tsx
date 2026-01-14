@@ -8,6 +8,8 @@ import { MesasPage } from '@/pages/MesasPage';
 import { CocinaPage } from '@/pages/CocinaPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { CajaPage } from '@/pages/CajaPage';
+import { InventarioPage } from './pages/InventarioPage';
+import { DashboardPage } from '@/pages/DashboardPage';
 
 const queryClient = new QueryClient();
 
@@ -31,10 +33,12 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<DashboardLayout />}>
               <Route index element={<Navigate to="/mesas" replace />} />
+              <Route path="dashboard" element={<DashboardPage />} />
               <Route path="mesas" element={<MesasPage />} />
               <Route path="tomar-pedido" element={<TomarPedidoPage />} />
               <Route path="cocina" element={<CocinaPage />} />
               <Route path="caja" element={<CajaPage />} />
+              <Route path="inventario" element={<InventarioPage />} />
             </Route>
           </Route>
 

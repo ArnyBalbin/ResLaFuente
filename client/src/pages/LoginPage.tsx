@@ -13,7 +13,7 @@ import { ChefHat } from 'lucide-react';
 export const LoginPage = () => {
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,19 +23,25 @@ export const LoginPage = () => {
     setLoading(true);
 
     try {
-      // Llamada al endpoint que acabamos de crear en el backend
       const { data } = await api.post('/usuarios/login', { email, password });
       
-      // Si pasa, guardamos en Zustand
       login(data);
       toast.success(`Bienvenido, ${data.nombre}`);
-      navigate('/mesas'); // Redirigir al sistema
+
+      if (data.rol === 'COCINA') {
+        navigate('/cocina');
+      } else if (data.rol === 'ADMIN') {
+        navigate('/dashboard'); 
+      } else {
+        navigate('/mesas');
+      }
+
     } catch (error) {
       toast.error('Correo o contraseña incorrectos');
     } finally {
       setLoading(false);
     }
-  };
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
@@ -51,23 +57,23 @@ export const LoginPage = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Correo Electrónico</Label>
-              <Input 
-                id="email" 
-                type="email" 
+              <Input
+                id="email"
+                type="email"
                 placeholder="admin@lafuente.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required 
+                required
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Contraseña</Label>
-              <Input 
-                id="password" 
-                type="password" 
+              <Input
+                id="password"
+                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required 
+                required
               />
             </div>
             <Button className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
