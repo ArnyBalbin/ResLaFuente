@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { UsuariosService } from './usuarios.service';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
@@ -30,5 +30,14 @@ export class UsuariosController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.usuariosService.remove(+id);
+  }
+
+  @Post('login')
+  async login(@Body() body: { email: string; password: string }) {
+    const usuario = await this.usuariosService.login(body.email, body.password);
+    if (!usuario) {
+      throw new BadRequestException('Credenciales incorrectas');
+    }
+    return usuario;
   }
 }

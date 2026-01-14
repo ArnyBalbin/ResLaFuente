@@ -44,4 +44,17 @@ export class UsuariosService {
       data: { activo: false }
     });
   }
+
+  async login(email: string, pass: string) {
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { email }
+    });
+
+    if (usuario && usuario.password === pass && usuario.activo) {
+      const { password, ...result } = usuario;
+      return result;
+    }
+
+    return null;
+  }
 }

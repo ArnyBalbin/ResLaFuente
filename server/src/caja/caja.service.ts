@@ -54,6 +54,6 @@ export class CajaService {
         pagos: true
       }
     });
-    return caja || { mensaje: 'No hay caja abierta' };
+    return caja || null;
   }
 }
