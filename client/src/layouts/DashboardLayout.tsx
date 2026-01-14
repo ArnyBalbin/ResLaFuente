@@ -1,6 +1,6 @@
 import { Outlet, Link } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
-import { Users, Layers, Briefcase, Coffee, LayoutDashboard, UtensilsCrossed, LogOut, DollarSign, History, PieChart } from 'lucide-react';
+import { Building2, Users, Layers, Briefcase, Coffee, LayoutDashboard, UtensilsCrossed, LogOut, DollarSign, History, PieChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export const DashboardLayout = () => {
@@ -39,8 +39,13 @@ export const DashboardLayout = () => {
               </Link>
 
               <Link to="/admin/clientes" className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-lg transition-colors">
-                <Briefcase size={18} /> 
-                <span className="font-medium">Clientes / Empresas</span>
+                <Briefcase size={20} />
+                <span className="font-medium">Clientes</span>
+              </Link>
+
+              <Link to="/admin/empresas" className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-lg transition-colors">
+                <Building2 size={20} />
+                <span className="font-medium">Empresas</span>
               </Link>
 
               <Link to="/admin/categorias" className="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-lg transition-colors">

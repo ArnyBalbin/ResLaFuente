@@ -12,8 +12,10 @@ import { UsuariosPage } from '@/pages/admin/UsuariosPage';
 import { CategoriasPage } from '@/pages/admin/CategoriasPage';
 import { ProductosPage } from '@/pages/admin/ProductosPage';
 import { ClientesPage } from '@/pages/admin/ClientesPage';
+import { EmpresasPage } from '@/pages/admin/EmpresasPage';
 import { InventarioPage } from './pages/InventarioPage';
 import { DashboardPage } from '@/pages/DashboardPage';
+
 
 const queryClient = new QueryClient();
 
@@ -40,6 +42,7 @@ function App() {
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="admin/usuarios" element={<UsuariosPage />} />
               <Route path="admin/clientes" element={<ClientesPage />} />
+              <Route path="admin/empresas" element={<EmpresasPage />} />
               <Route path="admin/categorias" element={<CategoriasPage />} />
               <Route path="admin/productos" element={<ProductosPage />} />
               <Route path="mesas" element={<MesasPage />} />
