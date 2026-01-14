@@ -15,6 +15,7 @@ import { CajaModule } from './caja/caja.module';
 import { PagosModule } from './pagos/pagos.module';
 import { FacturacionModule } from './facturacion/facturacion.module';
 import { FilesModule } from './files/files.module';
+import { InventarioModule } from './inventario/inventario.module';
 
 @Module({
   imports: [
@@ -22,7 +23,7 @@ import { FilesModule } from './files/files.module';
       rootPath: join(process.cwd(), 'uploads'),
       serveRoot: '/uploads',
     }),
-    PrismaModule, ProductosModule, CategoriasModule, MesasModule, PedidosModule, UsuariosModule, EmpresasModule, ClientesModule, CajaModule, PagosModule, FacturacionModule, FilesModule],
+    PrismaModule, ProductosModule, CategoriasModule, MesasModule, PedidosModule, UsuariosModule, EmpresasModule, ClientesModule, CajaModule, PagosModule, FacturacionModule, FilesModule, InventarioModule],
   controllers: [AppController],
   providers: [AppService],
 })
