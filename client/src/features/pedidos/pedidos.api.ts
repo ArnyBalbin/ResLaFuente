@@ -1,5 +1,5 @@
 import api from '@/api/axios';
-import type { Pedido, CrearPedidoPayload } from '@/types';
+import type { CrearPedidoPayload } from '@/types';
 
 export const crearPedido = async (payload: CrearPedidoPayload) => {
   const { data } = await api.post('/pedidos', payload);

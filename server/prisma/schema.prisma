@@ -6,7 +6,7 @@ datasource db {
   provider = "postgresql"
 }
 
-// 1. USUARIOS
+// 1. USUARIOS Y ROLES
 model Usuario {
   id        Int          @id @default(autoincrement())
   nombre    String
@@ -15,8 +15,10 @@ model Usuario {
   rol       Rol          @default(MOZO)
   activo    Boolean      @default(true)
   creadoEn  DateTime     @default(now())
+  
   pedidos   Pedido[]
   cajas     CajaDiaria[]
+  gastos    Gasto[]
 }
 
 enum Rol {
@@ -26,19 +28,18 @@ enum Rol {
   CAJA
 }
 
-// 2. CLIENTES Y EMPRESAS
 model Empresa {
   id             Int       @id @default(autoincrement())
   razonSocial    String
   ruc            String    @unique
   direccion      String?
   telefono       String?
-  
+
   tieneCredito   Boolean   @default(false)
-  limiteCredito  Decimal   @default(0)
-  creditoUsado   Decimal   @default(0)
+  limiteCredito  Decimal   @default(0)     @db.Decimal(10, 2)
+  creditoUsado   Decimal   @default(0)     @db.Decimal(10, 2)
   diaCierre      Int       @default(30)
-  
+
   empleados      Cliente[]
   pedidosCredito Pedido[]
 }
@@ -55,10 +56,10 @@ model Cliente {
   pedidos         Pedido[]
 }
 
-// 3. PRODUCTOS
 model Categoria {
   id        Int        @id @default(autoincrement())
   nombre    String
+  
   productos Producto[]
 }
 
@@ -72,41 +73,52 @@ model Producto {
   esProductoFinal Boolean                @default(true)
   stock           Int?                   @default(0)
   disponibleHoy   Boolean                @default(true)
+  
   categoria       Categoria              @relation(fields: [categoriaId], references: [id])
+  
   detallesPedido  DetallePedido[]
   movimientos     MovimientoInventario[]
 }
 
-// 4. OPERACIONES
 model Mesa {
   id      Int      @id @default(autoincrement())
   numero  String   @unique
   ocupada Boolean  @default(false)
+  
   pedidos Pedido[]
 }
 
 model Pedido {
-  id        Int             @id @default(autoincrement())
-  mesaId    Int
+  id        Int          @id @default(autoincrement())
+  
   usuarioId Int
+  usuario   Usuario      @relation(fields: [usuarioId], references: [id])
+  
   clienteId Int?
-  
-  // --- NUEVOS CAMPOS PARA CRÉDITO CORPORATIVO ---
-  esCredito Boolean         @default(false) // <--- AGREGAR
-  empresaId Int?            // <--- AGREGAR
-  empresa   Empresa?        @relation(fields: [empresaId], references: [id]) // <--- AGREGAR
-  // ----------------------------------------------
+  cliente   Cliente?     @relation(fields: [clienteId], references: [id])
 
-  estado    EstadoPedido    @default(PENDIENTE)
-  total     Decimal         @db.Decimal(10, 2)
-  fecha     DateTime        @default(now())
-  
-  mesa      Mesa            @relation(fields: [mesaId], references: [id])
-  usuario   Usuario         @relation(fields: [usuarioId], references: [id])
-  cliente   Cliente?        @relation(fields: [clienteId], references: [id])
+  mesaId    Int?         
+  mesa      Mesa?        @relation(fields: [mesaId], references: [id])
+
+  esCredito Boolean      @default(false)
+  empresaId Int?
+  empresa   Empresa?     @relation(fields: [empresaId], references: [id])
+
+  tipo      TipoPedido   @default(MESA)
+  direccion String?      // Solo para delivery
+
+  estado    EstadoPedido @default(PENDIENTE)
+  total     Decimal      @db.Decimal(10, 2)
+  fecha     DateTime     @default(now())
   
   detalles  DetallePedido[]
   pagos     Pago[]
+}
+
+enum TipoPedido {
+  MESA
+  LLEVAR
+  DELIVERY
 }
 
 enum EstadoPedido {
@@ -126,11 +138,11 @@ model DetallePedido {
   cantidad       Int
   precioUnitario Decimal  @db.Decimal(10, 2)
   notas          String?
+  
   pedido         Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
   producto       Producto @relation(fields: [productoId], references: [id])
 }
 
-// 5. CAJA Y PAGOS
 model CajaDiaria {
   id            Int       @id @default(autoincrement())
   usuarioId     Int
@@ -139,9 +151,26 @@ model CajaDiaria {
   montoInicial  Decimal   @db.Decimal(10, 2)
   montoFinal    Decimal?  @db.Decimal(10, 2)
   observaciones String?
-  estado        Boolean   @default(true)
+  estado        Boolean   @default(true) // true = abierta
+  
   usuario       Usuario   @relation(fields: [usuarioId], references: [id])
+  
   pagos         Pago[]
+  gastos        Gasto[]
+}
+
+model Gasto {
+  id          Int         @id @default(autoincrement())
+  descripcion String
+  monto       Decimal     @db.Decimal(10, 2)
+  fecha       DateTime    @default(now())
+  categoria   String      
+  
+  usuarioId   Int?
+  usuario     Usuario?    @relation(fields: [usuarioId], references: [id])
+  
+  cajaId      Int?
+  caja        CajaDiaria? @relation(fields: [cajaId], references: [id])
 }
 
 model Pago {
@@ -152,13 +181,12 @@ model Pago {
   metodo          MetodoPago
   fecha           DateTime   @default(now())
   
-  // Facturación Electrónica
   comprobanteUrl  String?
-  tipoComprobante String?
+  tipoComprobante String?    // BOLETA, FACTURA
   serie           String?
   numero          Int?
   sunatEstado     String?
-  codigoOperacion String?
+  codigoOperacion String?    // Para Yape/Tarjeta
   
   pedido          Pedido     @relation(fields: [pedidoId], references: [id])
   caja            CajaDiaria @relation(fields: [cajaId], references: [id])
@@ -171,7 +199,6 @@ enum MetodoPago {
   CREDITO_EMPRESA
 }
 
-// 6. INVENTARIO
 model MovimientoInventario {
   id         Int            @id @default(autoincrement())
   productoId Int
@@ -179,6 +206,7 @@ model MovimientoInventario {
   cantidad   Int
   fecha      DateTime       @default(now())
   motivo     String?
+  
   producto   Producto       @relation(fields: [productoId], references: [id], onDelete: Cascade)
 }
 

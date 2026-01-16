@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from "@/components/ui/sonner";
 import { useAuthStore } from '@/store/authStore';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
-import { TomarPedidoPage } from '@/pages/TomarPedidoPage';
+import { TomarPedidoPage } from '@/pages/mozo/TomarPedidoPage';
 import { MesasPage } from '@/pages/MesasPage';
 import { CocinaPage } from '@/pages/CocinaPage';
 import { LoginPage } from '@/pages/LoginPage';
@@ -45,8 +45,8 @@ function App() {
               <Route path="admin/empresas" element={<EmpresasPage />} />
               <Route path="admin/categorias" element={<CategoriasPage />} />
               <Route path="admin/productos" element={<ProductosPage />} />
+              <Route path="mozo/tomar-pedido" element={<TomarPedidoPage />} />
               <Route path="mesas" element={<MesasPage />} />
-              <Route path="tomar-pedido" element={<TomarPedidoPage />} />
               <Route path="cocina" element={<CocinaPage />} />
               <Route path="caja" element={<CajaPage />} />
               <Route path="inventario" element={<InventarioPage />} />

@@ -2,7 +2,10 @@
 CREATE TYPE "Rol" AS ENUM ('ADMIN', 'MOZO', 'COCINA', 'CAJA');
 
 -- CreateEnum
-CREATE TYPE "EstadoPedido" AS ENUM ('PENDIENTE', 'EN_PROCESO', 'LISTO', 'SERVIDO', 'CERRADO', 'CANCELADO');
+CREATE TYPE "TipoPedido" AS ENUM ('MESA', 'LLEVAR', 'DELIVERY');
+
+-- CreateEnum
+CREATE TYPE "EstadoPedido" AS ENUM ('PENDIENTE', 'EN_PROCESO', 'LISTO', 'SERVIDO', 'CERRADO', 'CANCELADO', 'POR_FACTURAR');
 
 -- CreateEnum
 CREATE TYPE "MetodoPago" AS ENUM ('EFECTIVO', 'YAPE_PLIN', 'TARJETA', 'CREDITO_EMPRESA');
@@ -27,10 +30,13 @@ CREATE TABLE "Usuario" (
 CREATE TABLE "Empresa" (
     "id" SERIAL NOT NULL,
     "razonSocial" TEXT NOT NULL,
-    "ruc" TEXT,
+    "ruc" TEXT NOT NULL,
     "direccion" TEXT,
     "telefono" TEXT,
-    "activo" BOOLEAN NOT NULL DEFAULT true,
+    "tieneCredito" BOOLEAN NOT NULL DEFAULT false,
+    "limiteCredito" DECIMAL(10,2) NOT NULL DEFAULT 0,
+    "creditoUsado" DECIMAL(10,2) NOT NULL DEFAULT 0,
+    "diaCierre" INTEGER NOT NULL DEFAULT 30,
 
     CONSTRAINT "Empresa_pkey" PRIMARY KEY ("id")
 );
@@ -40,9 +46,6 @@ CREATE TABLE "Cliente" (
     "id" SERIAL NOT NULL,
     "nombre" TEXT NOT NULL,
     "dni" TEXT,
-    "ruc" TEXT,
-    "direccion" TEXT,
-    "telefono" TEXT,
     "email" TEXT,
     "empresaId" INTEGER,
 
@@ -84,9 +87,13 @@ CREATE TABLE "Mesa" (
 -- CreateTable
 CREATE TABLE "Pedido" (
     "id" SERIAL NOT NULL,
-    "mesaId" INTEGER NOT NULL,
     "usuarioId" INTEGER NOT NULL,
     "clienteId" INTEGER,
+    "mesaId" INTEGER,
+    "esCredito" BOOLEAN NOT NULL DEFAULT false,
+    "empresaId" INTEGER,
+    "tipo" "TipoPedido" NOT NULL DEFAULT 'MESA',
+    "direccion" TEXT,
     "estado" "EstadoPedido" NOT NULL DEFAULT 'PENDIENTE',
     "total" DECIMAL(10,2) NOT NULL,
     "fecha" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -118,6 +125,19 @@ CREATE TABLE "CajaDiaria" (
     "estado" BOOLEAN NOT NULL DEFAULT true,
 
     CONSTRAINT "CajaDiaria_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Gasto" (
+    "id" SERIAL NOT NULL,
+    "descripcion" TEXT NOT NULL,
+    "monto" DECIMAL(10,2) NOT NULL,
+    "fecha" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "categoria" TEXT NOT NULL,
+    "usuarioId" INTEGER,
+    "cajaId" INTEGER,
+
+    CONSTRAINT "Gasto_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -157,6 +177,9 @@ CREATE UNIQUE INDEX "Usuario_email_key" ON "Usuario"("email");
 CREATE UNIQUE INDEX "Empresa_ruc_key" ON "Empresa"("ruc");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Cliente_dni_key" ON "Cliente"("dni");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Mesa_numero_key" ON "Mesa"("numero");
 
 -- AddForeignKey
@@ -166,13 +189,16 @@ ALTER TABLE "Cliente" ADD CONSTRAINT "Cliente_empresaId_fkey" FOREIGN KEY ("empr
 ALTER TABLE "Producto" ADD CONSTRAINT "Producto_categoriaId_fkey" FOREIGN KEY ("categoriaId") REFERENCES "Categoria"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Pedido" ADD CONSTRAINT "Pedido_mesaId_fkey" FOREIGN KEY ("mesaId") REFERENCES "Mesa"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Pedido" ADD CONSTRAINT "Pedido_usuarioId_fkey" FOREIGN KEY ("usuarioId") REFERENCES "Usuario"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Pedido" ADD CONSTRAINT "Pedido_clienteId_fkey" FOREIGN KEY ("clienteId") REFERENCES "Cliente"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Pedido" ADD CONSTRAINT "Pedido_mesaId_fkey" FOREIGN KEY ("mesaId") REFERENCES "Mesa"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Pedido" ADD CONSTRAINT "Pedido_empresaId_fkey" FOREIGN KEY ("empresaId") REFERENCES "Empresa"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "DetallePedido" ADD CONSTRAINT "DetallePedido_pedidoId_fkey" FOREIGN KEY ("pedidoId") REFERENCES "Pedido"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -182,6 +208,12 @@ ALTER TABLE "DetallePedido" ADD CONSTRAINT "DetallePedido_productoId_fkey" FOREI
 
 -- AddForeignKey
 ALTER TABLE "CajaDiaria" ADD CONSTRAINT "CajaDiaria_usuarioId_fkey" FOREIGN KEY ("usuarioId") REFERENCES "Usuario"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Gasto" ADD CONSTRAINT "Gasto_usuarioId_fkey" FOREIGN KEY ("usuarioId") REFERENCES "Usuario"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Gasto" ADD CONSTRAINT "Gasto_cajaId_fkey" FOREIGN KEY ("cajaId") REFERENCES "CajaDiaria"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Pago" ADD CONSTRAINT "Pago_pedidoId_fkey" FOREIGN KEY ("pedidoId") REFERENCES "Pedido"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
