@@ -17,7 +17,7 @@ model Usuario {
 
   pedidos   Pedido[]
   cajas     CajaDiaria[]
-  gastos    Gasto[]
+  gastos    Gasto[]      // Quien registró el gasto
 }
 
 enum Rol {
@@ -27,7 +27,7 @@ enum Rol {
   CAJA
 }
 
-model Empresa {
+model Empresa { // Para Créditos Corporativos
   id             Int       @id @default(autoincrement())
   razonSocial    String
   ruc            String    @unique
@@ -46,8 +46,11 @@ model Empresa {
 model Cliente {
   id              Int      @id @default(autoincrement())
   nombre          String
-  dni             String?  @unique
+  dni             String?  @unique // <--- Mejor unique para evitar duplicados
+  ruc             String?  // <--- AGREGADO: Por si piden factura a nombre personal/negocio
   email           String?
+  telefono        String?
+  direccion       String?
   
   empresaId       Int?
   empresa         Empresa? @relation(fields: [empresaId], references: [id])
@@ -65,11 +68,13 @@ model Producto {
   id              Int                    @id @default(autoincrement())
   nombre          String
   descripcion     String?
-  precio          Decimal                @db.Decimal(10, 2)
+  precio          Decimal                @db.Decimal(10, 2) // Precio de Venta
+  costo           Decimal                @default(0) @db.Decimal(10, 2) // <--- AGREGADO: Para calcular ganancia (Venta - Costo)
+  
   imagenUrl       String?
   categoriaId     Int
-  esProductoFinal Boolean                @default(true)
-  stock           Int?                   @default(0)
+  esProductoFinal Boolean                @default(true) // True: Plato servido, False: Insumo (si decides manejar recetas luego)
+  stock           Int                    @default(0)
   disponibleHoy   Boolean                @default(true)
   
   categoria       Categoria              @relation(fields: [categoriaId], references: [id])
@@ -81,7 +86,7 @@ model Producto {
 model Mesa {
   id        Int      @id @default(autoincrement())
   numero    String   @unique
-  capacidad Int      @default(4) // <--- AGREGADO: Útil para saber cuántos entran
+  capacidad Int      @default(4)
   ocupada   Boolean  @default(false)
   
   pedidos   Pedido[]
@@ -90,22 +95,22 @@ model Mesa {
 model Pedido {
   id        Int          @id @default(autoincrement())
   
-  usuarioId Int
+  usuarioId Int          // Mozo que atendió
   usuario   Usuario      @relation(fields: [usuarioId], references: [id])
   
-  clienteId Int?
+  clienteId Int?         // Cliente asignado (opcional si es anonimo)
   cliente   Cliente?     @relation(fields: [clienteId], references: [id])
 
-  mesaId    Int?         // <--- AHORA ES OPCIONAL (Para Delivery)
+  mesaId    Int?
   mesa      Mesa?        @relation(fields: [mesaId], references: [id])
 
   esCredito Boolean      @default(false)
-  empresaId Int?
+  empresaId Int?         // Si es crédito, a qué empresa se carga
   empresa   Empresa?     @relation(fields: [empresaId], references: [id])
 
-  tipo      TipoPedido   @default(MESA) // <--- AGREGADO
-  direccion String?      // <--- AGREGADO (Delivery)
-
+  tipo      TipoPedido   @default(MESA)
+  direccion String?      // Para Delivery
+  
   estado    EstadoPedido @default(PENDIENTE)
   total     Decimal      @db.Decimal(10, 2)
   fecha     DateTime     @default(now())
@@ -121,13 +126,12 @@ enum TipoPedido {
 }
 
 enum EstadoPedido {
-  PENDIENTE
-  EN_PROCESO
-  LISTO
-  SERVIDO
-  CERRADO
-  CANCELADO
-  POR_FACTURAR
+  PENDIENTE    // Enviado a cocina
+  EN_PROCESO   // Cocinando
+  LISTO        // En mostrador/pase
+  SERVIDO      // Entregado al cliente
+  CERRADO      // Pagado y finalizado
+  CANCELADO    // Anulado
 }
 
 model DetallePedido {
@@ -136,7 +140,7 @@ model DetallePedido {
   productoId     Int
   cantidad       Int
   precioUnitario Decimal  @db.Decimal(10, 2)
-  notas          String?  // <--- YA EXISTE: Aquí guardaremos "Sin cebolla"
+  notas          String?  // "Sin aji", "Bien cocido"
   
   pedido         Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
   producto       Producto @relation(fields: [productoId], references: [id])
@@ -144,18 +148,18 @@ model DetallePedido {
 
 model CajaDiaria {
   id            Int       @id @default(autoincrement())
-  usuarioId     Int
+  usuarioId     Int       // Cajero responsable
   fechaApertura DateTime  @default(now())
   fechaCierre   DateTime?
   montoInicial  Decimal   @db.Decimal(10, 2)
   montoFinal    Decimal?  @db.Decimal(10, 2)
   observaciones String?
-  estado        Boolean   @default(true)
+  estado        Boolean   @default(true) // True = Abierta
   
   usuario       Usuario   @relation(fields: [usuarioId], references: [id])
   
   pagos         Pago[]
-  gastos        Gasto[]   // <--- AGREGADO
+  gastos        Gasto[]
 }
 
 model Gasto {
@@ -163,29 +167,31 @@ model Gasto {
   descripcion String
   monto       Decimal     @db.Decimal(10, 2)
   fecha       DateTime    @default(now())
-  categoria   String      
+  categoria   String      // "Servicios", "Planilla", "Insumos"
+  
+  esCosto     Boolean     @default(false) // <--- AGREGADO: Para diferenciar Gasto Operativo de Costo de Venta en el reporte
   
   usuarioId   Int?
   usuario     Usuario?    @relation(fields: [usuarioId], references: [id])
   
-  cajaId      Int?
+  cajaId      Int?        // Si sale de la caja chica del día
   caja        CajaDiaria? @relation(fields: [cajaId], references: [id])
 }
 
 model Pago {
   id              Int        @id @default(autoincrement())
   pedidoId        Int
-  cajaId          Int
+  cajaId          Int        // Todo pago entra a una caja abierta
   monto           Decimal    @db.Decimal(10, 2)
   metodo          MetodoPago
   fecha           DateTime   @default(now())
   
   comprobanteUrl  String?
-  tipoComprobante String?
+  tipoComprobante String?    // BOLETA, FACTURA, TICKET
   serie           String?
-  numero          Int?
+  numero          String?    // Cambiado a String por si tiene guiones o ceros a la izquierda
   sunatEstado     String?
-  codigoOperacion String?
+  codigoOperacion String?    // Para tarjetas/Yape
   
   pedido          Pedido     @relation(fields: [pedidoId], references: [id])
   caja            CajaDiaria @relation(fields: [cajaId], references: [id])
@@ -199,14 +205,15 @@ enum MetodoPago {
 }
 
 model MovimientoInventario {
-  id         Int            @id @default(autoincrement())
-  productoId Int
-  tipo       TipoMovimiento
-  cantidad   Int
-  fecha      DateTime       @default(now())
-  motivo     String?
+  id            Int            @id @default(autoincrement())
+  productoId    Int
+  tipo          TipoMovimiento
+  cantidad      Int
+  fecha         DateTime       @default(now())
+  motivo        String?        // "Compra", "Mermas", "Venta #123"
+  costoUnitario Decimal?       @db.Decimal(10, 2) // <--- AGREGADO: Importante para saber valor del inventario
   
-  producto   Producto       @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  producto      Producto       @relation(fields: [productoId], references: [id], onDelete: Cascade)
 }
 
 enum TipoMovimiento {

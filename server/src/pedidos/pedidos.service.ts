@@ -118,7 +118,7 @@ export class PedidosService {
   findForKitchen() {
     return this.prisma.pedido.findMany({
       where: {
-        estado: { in: ['PENDIENTE', 'EN_PROCESO', 'POR_FACTURAR'] } 
+        estado: { in: ['PENDIENTE', 'EN_PROCESO'] } 
       },
       include: {
         detalles: {

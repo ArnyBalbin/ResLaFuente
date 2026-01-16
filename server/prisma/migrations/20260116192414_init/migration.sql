@@ -5,7 +5,7 @@ CREATE TYPE "Rol" AS ENUM ('ADMIN', 'MOZO', 'COCINA', 'CAJA');
 CREATE TYPE "TipoPedido" AS ENUM ('MESA', 'LLEVAR', 'DELIVERY');
 
 -- CreateEnum
-CREATE TYPE "EstadoPedido" AS ENUM ('PENDIENTE', 'EN_PROCESO', 'LISTO', 'SERVIDO', 'CERRADO', 'CANCELADO', 'POR_FACTURAR');
+CREATE TYPE "EstadoPedido" AS ENUM ('PENDIENTE', 'EN_PROCESO', 'LISTO', 'SERVIDO', 'CERRADO', 'CANCELADO');
 
 -- CreateEnum
 CREATE TYPE "MetodoPago" AS ENUM ('EFECTIVO', 'YAPE_PLIN', 'TARJETA', 'CREDITO_EMPRESA');
@@ -46,7 +46,10 @@ CREATE TABLE "Cliente" (
     "id" SERIAL NOT NULL,
     "nombre" TEXT NOT NULL,
     "dni" TEXT,
+    "ruc" TEXT,
     "email" TEXT,
+    "telefono" TEXT,
+    "direccion" TEXT,
     "empresaId" INTEGER,
 
     CONSTRAINT "Cliente_pkey" PRIMARY KEY ("id")
@@ -66,10 +69,11 @@ CREATE TABLE "Producto" (
     "nombre" TEXT NOT NULL,
     "descripcion" TEXT,
     "precio" DECIMAL(10,2) NOT NULL,
+    "costo" DECIMAL(10,2) NOT NULL DEFAULT 0,
     "imagenUrl" TEXT,
     "categoriaId" INTEGER NOT NULL,
     "esProductoFinal" BOOLEAN NOT NULL DEFAULT true,
-    "stock" INTEGER DEFAULT 0,
+    "stock" INTEGER NOT NULL DEFAULT 0,
     "disponibleHoy" BOOLEAN NOT NULL DEFAULT true,
 
     CONSTRAINT "Producto_pkey" PRIMARY KEY ("id")
@@ -79,6 +83,7 @@ CREATE TABLE "Producto" (
 CREATE TABLE "Mesa" (
     "id" SERIAL NOT NULL,
     "numero" TEXT NOT NULL,
+    "capacidad" INTEGER NOT NULL DEFAULT 4,
     "ocupada" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "Mesa_pkey" PRIMARY KEY ("id")
@@ -134,6 +139,7 @@ CREATE TABLE "Gasto" (
     "monto" DECIMAL(10,2) NOT NULL,
     "fecha" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "categoria" TEXT NOT NULL,
+    "esCosto" BOOLEAN NOT NULL DEFAULT false,
     "usuarioId" INTEGER,
     "cajaId" INTEGER,
 
@@ -151,7 +157,7 @@ CREATE TABLE "Pago" (
     "comprobanteUrl" TEXT,
     "tipoComprobante" TEXT,
     "serie" TEXT,
-    "numero" INTEGER,
+    "numero" TEXT,
     "sunatEstado" TEXT,
     "codigoOperacion" TEXT,
 
@@ -166,6 +172,7 @@ CREATE TABLE "MovimientoInventario" (
     "cantidad" INTEGER NOT NULL,
     "fecha" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "motivo" TEXT,
+    "costoUnitario" DECIMAL(10,2),
 
     CONSTRAINT "MovimientoInventario_pkey" PRIMARY KEY ("id")
 );

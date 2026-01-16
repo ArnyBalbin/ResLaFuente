@@ -14,7 +14,7 @@ export class ProductosService {
         precio: createProductoDto.precio,
         imagenUrl: createProductoDto.imagenUrl,
         esProductoFinal: createProductoDto.esProductoFinal,
-        stock: createProductoDto.esProductoFinal ? 0 : null,
+        stock: createProductoDto.esProductoFinal ? 0 : undefined,
         categoriaId: createProductoDto.categoriaId
       }
     });
