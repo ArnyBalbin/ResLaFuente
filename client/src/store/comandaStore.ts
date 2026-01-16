@@ -6,8 +6,10 @@ interface ComandaState {
   items: ItemComanda[];
   
   seleccionarMesa: (id: number) => void;
+  // Agregamos notas opcional aquí
   agregarProducto: (producto: Producto, cantidad: number, notas?: string) => void;
-  eliminarProducto: (productoId: number) => void;
+  // Eliminar ahora pide ID y NOTAS para saber cuál borrar exactamente
+  eliminarProducto: (productoId: number, notas?: string) => void; 
   limpiarComanda: () => void;
   
   total: () => number;
@@ -21,27 +23,37 @@ export const useComandaStore = create<ComandaState>((set, get) => ({
 
   agregarProducto: (producto, cantidad, notas) => {
     const itemsActuales = get().items;
+    
+    // CORRECCIÓN CRÍTICA:
+    // Buscamos si existe el producto con el MISMO ID y la MISMA NOTA.
+    // Tratamos undefined como string vacío para evitar errores de comparación.
+    const notaNormalizada = notas || '';
 
-    const existe = itemsActuales.find((i) => i.producto.id === producto.id);
+    const existeIndex = itemsActuales.findIndex((i) => 
+      i.producto.id === producto.id && 
+      (i.notas || '') === notaNormalizada
+    );
 
-    if (existe) {
-      set({
-        items: itemsActuales.map((i) =>
-          i.producto.id === producto.id
-            ? { ...i, cantidad: i.cantidad + cantidad }
-            : i
-        ),
-      });
+    if (existeIndex >= 0) {
+      // Si existe exacto, sumamos cantidad
+      const nuevosItems = [...itemsActuales];
+      nuevosItems[existeIndex].cantidad += cantidad;
+      set({ items: nuevosItems });
     } else {
+      // Si es nuevo (o tiene nota distinta), agregamos nueva línea
       set({
-        items: [...itemsActuales, { producto, cantidad, notas }],
+        items: [...itemsActuales, { producto, cantidad, notas: notaNormalizada }],
       });
     }
   },
 
-  eliminarProducto: (productoId) => {
+  eliminarProducto: (productoId, notas) => {
+    const notaNormalizada = notas || '';
     set({
-      items: get().items.filter((i) => i.producto.id !== productoId),
+      // Mantenemos el ítem si el ID es distinto O la nota es distinta
+      items: get().items.filter((i) => 
+        i.producto.id !== productoId || (i.notas || '') !== notaNormalizada
+      ),
     });
   },
 

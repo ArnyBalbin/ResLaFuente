@@ -1,5 +1,11 @@
-import { IsInt, IsNotEmpty, IsOptional, IsArray, ValidateNested, IsString, Min, IsBoolean } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsArray, ValidateNested, IsString, Min, IsBoolean, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
+
+export enum TipoPedido {
+  MESA = 'MESA',
+  LLEVAR = 'LLEVAR',
+  DELIVERY = 'DELIVERY',
+}
 
 class DetallePedidoDto {
   @IsInt()
@@ -15,9 +21,10 @@ class DetallePedidoDto {
 }
 
 export class CreatePedidoDto {
+
   @IsInt()
-  @IsNotEmpty()
-  mesaId: number;
+  @IsOptional()
+  mesaId?: number;
 
   @IsInt()
   @IsNotEmpty()
@@ -26,6 +33,14 @@ export class CreatePedidoDto {
   @IsInt()
   @IsOptional()
   clienteId?: number;
+
+  @IsOptional()
+  @IsEnum(TipoPedido)
+  tipo?: TipoPedido;
+
+  @IsOptional()
+  @IsString()
+  direccion?: string;
 
   @IsOptional()
   @IsBoolean()

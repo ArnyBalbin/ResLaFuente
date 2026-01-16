@@ -22,7 +22,7 @@ export interface ItemComanda {
 }
 
 export interface CrearPedidoPayload {
-  mesaId: number;
+  mesaId?: number;
   usuarioId: number;
   clienteId?: number;
   detalles: {
@@ -30,6 +30,11 @@ export interface CrearPedidoPayload {
     cantidad: number;
     notas?: string;
   }[];
+
+  tipo: 'MESA' | 'LLEVAR' | 'DELIVERY';
+  direccion?: string;
+  esCredito?: boolean;
+  empresaId?: number;
 }
 
 export interface Mesa {
@@ -48,10 +53,10 @@ export interface DetallePedido {
 
 export interface Pedido {
   id: number;
-  mesaId: number;
+  mesaId?: number;
   estado: string;
   fecha: string;
-  mesa: Mesa;
+  mesa?: Mesa;
   usuario: { nombre: string };
   detalles: DetallePedido[];
 }

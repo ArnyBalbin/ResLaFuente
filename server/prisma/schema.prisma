@@ -6,7 +6,6 @@ datasource db {
   provider = "postgresql"
 }
 
-// 1. USUARIOS Y ROLES
 model Usuario {
   id        Int          @id @default(autoincrement())
   nombre    String
@@ -15,7 +14,7 @@ model Usuario {
   rol       Rol          @default(MOZO)
   activo    Boolean      @default(true)
   creadoEn  DateTime     @default(now())
-  
+
   pedidos   Pedido[]
   cajas     CajaDiaria[]
   gastos    Gasto[]
@@ -34,12 +33,12 @@ model Empresa {
   ruc            String    @unique
   direccion      String?
   telefono       String?
-
+  
   tieneCredito   Boolean   @default(false)
   limiteCredito  Decimal   @default(0)     @db.Decimal(10, 2)
   creditoUsado   Decimal   @default(0)     @db.Decimal(10, 2)
   diaCierre      Int       @default(30)
-
+  
   empleados      Cliente[]
   pedidosCredito Pedido[]
 }
@@ -59,7 +58,6 @@ model Cliente {
 model Categoria {
   id        Int        @id @default(autoincrement())
   nombre    String
-  
   productos Producto[]
 }
 
@@ -81,11 +79,12 @@ model Producto {
 }
 
 model Mesa {
-  id      Int      @id @default(autoincrement())
-  numero  String   @unique
-  ocupada Boolean  @default(false)
+  id        Int      @id @default(autoincrement())
+  numero    String   @unique
+  capacidad Int      @default(4) // <--- AGREGADO: Útil para saber cuántos entran
+  ocupada   Boolean  @default(false)
   
-  pedidos Pedido[]
+  pedidos   Pedido[]
 }
 
 model Pedido {
@@ -97,15 +96,15 @@ model Pedido {
   clienteId Int?
   cliente   Cliente?     @relation(fields: [clienteId], references: [id])
 
-  mesaId    Int?         
+  mesaId    Int?         // <--- AHORA ES OPCIONAL (Para Delivery)
   mesa      Mesa?        @relation(fields: [mesaId], references: [id])
 
   esCredito Boolean      @default(false)
   empresaId Int?
   empresa   Empresa?     @relation(fields: [empresaId], references: [id])
 
-  tipo      TipoPedido   @default(MESA)
-  direccion String?      // Solo para delivery
+  tipo      TipoPedido   @default(MESA) // <--- AGREGADO
+  direccion String?      // <--- AGREGADO (Delivery)
 
   estado    EstadoPedido @default(PENDIENTE)
   total     Decimal      @db.Decimal(10, 2)
@@ -137,7 +136,7 @@ model DetallePedido {
   productoId     Int
   cantidad       Int
   precioUnitario Decimal  @db.Decimal(10, 2)
-  notas          String?
+  notas          String?  // <--- YA EXISTE: Aquí guardaremos "Sin cebolla"
   
   pedido         Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
   producto       Producto @relation(fields: [productoId], references: [id])
@@ -151,12 +150,12 @@ model CajaDiaria {
   montoInicial  Decimal   @db.Decimal(10, 2)
   montoFinal    Decimal?  @db.Decimal(10, 2)
   observaciones String?
-  estado        Boolean   @default(true) // true = abierta
+  estado        Boolean   @default(true)
   
   usuario       Usuario   @relation(fields: [usuarioId], references: [id])
   
   pagos         Pago[]
-  gastos        Gasto[]
+  gastos        Gasto[]   // <--- AGREGADO
 }
 
 model Gasto {
@@ -182,11 +181,11 @@ model Pago {
   fecha           DateTime   @default(now())
   
   comprobanteUrl  String?
-  tipoComprobante String?    // BOLETA, FACTURA
+  tipoComprobante String?
   serie           String?
   numero          Int?
   sunatEstado     String?
-  codigoOperacion String?    // Para Yape/Tarjeta
+  codigoOperacion String?
   
   pedido          Pedido     @relation(fields: [pedidoId], references: [id])
   caja            CajaDiaria @relation(fields: [cajaId], references: [id])

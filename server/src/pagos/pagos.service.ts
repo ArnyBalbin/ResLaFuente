@@ -32,10 +32,12 @@ export class PagosService {
         data: { estado: 'CERRADO' }
       });
 
-      await tx.mesa.update({
-        where: { id: pedido.mesaId },
-        data: { ocupada: false }
-      });
+      if (pedido.mesaId) {
+        await tx.mesa.update({
+          where: { id: pedido.mesaId },
+          data: { ocupada: false }
+        });
+      }
 
       return nuevoPago;
     });
