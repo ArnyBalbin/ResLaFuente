@@ -23,7 +23,6 @@ export class UsuariosController {
     return this.usuariosService.create(createUsuarioDto);
   }
 
-  // Protegemos la lista para que no cualquiera vea los usuarios
   @UseGuards(JwtAuthGuard) 
   @Get()
   findAll() {
@@ -32,7 +31,7 @@ export class UsuariosController {
 
   @UseGuards(JwtAuthGuard)
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) { // ParseIntPipe convierte el string url a number
+  findOne(@Param('id', ParseIntPipe) id: number) {
     return this.usuariosService.findOne(id);
   }
 

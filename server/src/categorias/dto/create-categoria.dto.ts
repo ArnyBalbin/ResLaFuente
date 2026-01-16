@@ -1,7 +1,15 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsString, IsNotEmpty, IsInt, IsOptional, IsPositive } from 'class-validator';
 
 export class CreateCategoriaDto {
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'El nombre de la categoría es obligatorio' })
   nombre: string;
+
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  @Type(() => Number)
+  padreId?: number;
+  
 }

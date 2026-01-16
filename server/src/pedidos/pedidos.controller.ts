@@ -6,10 +6,7 @@ import { CreatePedidoDto } from './dto/create-pedido.dto';
 export class PedidosController {
   constructor(private readonly pedidosService: PedidosService) {}
 
-  @Post()
-  create(@Body() createPedidoDto: CreatePedidoDto) {
-    return this.pedidosService.create(createPedidoDto);
-  }
+  
 
   @Get()
   findAll() {

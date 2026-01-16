@@ -11,7 +11,7 @@ export class InventarioService {
 
     const producto = await this.prisma.producto.findUnique({ where: { id: productoId } });
     if (!producto) throw new BadRequestException('Producto no encontrado');
-    if (!producto.esProductoFinal) throw new BadRequestException('Este producto no maneja stock (es preparado)');
+
 
     return await this.prisma.$transaction(async (tx) => {
       

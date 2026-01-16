@@ -1,4 +1,6 @@
-import { IsString, IsNotEmpty, IsNumber, IsInt, IsBoolean, IsOptional, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { TipoProducto } from '@prisma/client';
 
 export class CreateProductoDto {
   @IsString()
@@ -10,25 +12,40 @@ export class CreateProductoDto {
   descripcion?: string;
 
   @IsNumber()
-  @Min(0)
+  @IsPositive()
+  @Type(() => Number)
   precio: number;
 
   @IsInt()
+  @IsPositive()
+  @Type(() => Number)
   categoriaId: number;
+
+  @IsEnum(TipoProducto, { message: 'El tipo debe ser CARTA, MENU, GUARNICION, BEBIDA o EXTRA' })
+  tipo: TipoProducto; // <--- Nuevo Campo Obligatorio
+  
+  @IsBoolean()
+  @Type(() => Boolean)
+  controlarStock: boolean;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  @Type(() => Number)
+  costo?: number;
+
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  @Type(() => Number)
+  stock?: number;
 
   @IsString()
   @IsOptional()
   imagenUrl?: string;
-
+  
   @IsBoolean()
   @IsOptional()
-  esProductoFinal?: boolean;
-
-  @IsInt()
-  @IsOptional()
-  stock?: number;
-
-  @IsBoolean()
-  @IsOptional()
+  @Type(() => Boolean)
   disponibleHoy?: boolean;
 }
