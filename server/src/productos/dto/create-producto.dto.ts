@@ -22,7 +22,7 @@ export class CreateProductoDto {
   categoriaId: number;
 
   @IsEnum(TipoProducto, { message: 'El tipo debe ser CARTA, MENU, GUARNICION, BEBIDA o EXTRA' })
-  tipo: TipoProducto; // <--- Nuevo Campo Obligatorio
+  tipo: TipoProducto;
   
   @IsBoolean()
   @Type(() => Boolean)

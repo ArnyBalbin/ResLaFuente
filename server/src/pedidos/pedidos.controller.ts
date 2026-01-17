@@ -1,26 +1,16 @@
-import { Controller, Get, Post, Body, Patch, Param } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import { PedidosService } from './pedidos.service';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('pedidos')
 export class PedidosController {
   constructor(private readonly pedidosService: PedidosService) {}
 
-  
-
-  @Get()
-  findAll() {
-    return this.pedidosService.findAll();
-  }
-
-  @Get('cocina')
-  findKitchen() {
-    return this.pedidosService.findForKitchen();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.pedidosService.findOne(+id);
+  @Post()
+  create(@Body() createPedidoDto: CreatePedidoDto) {
+    return this.pedidosService.create(createPedidoDto);
   }
   
 }

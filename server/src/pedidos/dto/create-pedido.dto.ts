@@ -1,13 +1,19 @@
-import { IsInt, IsNotEmpty, IsOptional, IsArray, ValidateNested, IsString, Min, IsBoolean, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
+import { 
+  IsArray, 
+  IsBoolean, 
+  IsEnum, 
+  IsInt, 
+  IsNotEmpty, 
+  IsOptional, 
+  IsString, 
+  ValidateNested, 
+  Min,
+  ValidateIf
+} from 'class-validator';
+import { TipoPedido } from '@prisma/client';
 
-export enum TipoPedido {
-  MESA = 'MESA',
-  LLEVAR = 'LLEVAR',
-  DELIVERY = 'DELIVERY',
-}
-
-class DetallePedidoDto {
+export class DetallePedidoItemDto {
   @IsInt()
   productoId: number;
 
@@ -18,40 +24,44 @@ class DetallePedidoDto {
   @IsString()
   @IsOptional()
   notas?: string;
+
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => DetallePedidoItemDto)
+  componentes?: DetallePedidoItemDto[]; 
 }
 
 export class CreatePedidoDto {
-
   @IsInt()
-  @IsOptional()
-  mesaId?: number;
-
-  @IsInt()
-  @IsNotEmpty()
   usuarioId: number;
+
+  @IsEnum(TipoPedido)
+  tipo: TipoPedido;
+
+  @ValidateIf(o => o.tipo === 'MESA')
+  @IsInt()
+  @IsNotEmpty({ message: 'El ID de mesa es obligatorio para pedidos en mesa' })
+  mesaId?: number;
 
   @IsInt()
   @IsOptional()
   clienteId?: number;
 
-  @IsOptional()
-  @IsEnum(TipoPedido)
-  tipo?: TipoPedido;
-
-  @IsOptional()
-  @IsString()
-  direccion?: string;
-
-  @IsOptional()
   @IsBoolean()
-  esCredito?: boolean;
+  esCredito: boolean;
 
-  @IsOptional()
+  @ValidateIf(o => o.esCredito === true)
   @IsInt()
+  @IsNotEmpty({ message: 'Si es venta a crédito, debe especificar la empresa' })
   empresaId?: number;
+
+  @IsString()
+  @IsOptional()
+  direccion?: string;
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => DetallePedidoDto)
-  detalles: DetallePedidoDto[];
+  @Type(() => DetallePedidoItemDto)
+  items: DetallePedidoItemDto[];
 }
