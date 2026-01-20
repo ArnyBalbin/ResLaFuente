@@ -1,67 +1,93 @@
 import { create } from 'zustand';
-import type { ItemComanda, Producto } from '@/types';
+import type { ItemComanda, Producto, TipoPedido } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 
 interface ComandaState {
-  mesaId: number | null;
   items: ItemComanda[];
+  mesaId: number | null;
+  tipoPedido: TipoPedido;
+  clienteId: number | null;
+  empresaId: number | null;
+  esCredito: boolean;
+
+  setMesa: (id: number) => void;
+  setTipoPedido: (tipo: TipoPedido) => void;
+  setClienteData: (clienteId: number | null, empresaId: number | null, esCredito: boolean) => void;
   
-  seleccionarMesa: (id: number) => void;
-  // Agregamos notas opcional aquí
-  agregarProducto: (producto: Producto, cantidad: number, notas?: string) => void;
-  // Eliminar ahora pide ID y NOTAS para saber cuál borrar exactamente
-  eliminarProducto: (productoId: number, notas?: string) => void; 
-  limpiarComanda: () => void;
+  addItem: (producto: Producto, cantidad: number, notas?: string, componentes?: ItemComanda[]) => void;
+  removeItem: (uniqueId: string) => void;
+  updateQuantity: (uniqueId: string, cantidad: number) => void;
+  clearComanda: () => void;
   
   total: () => number;
 }
 
 export const useComandaStore = create<ComandaState>((set, get) => ({
-  mesaId: null,
   items: [],
+  mesaId: null,
+  tipoPedido: 'MESA',
+  clienteId: null,
+  empresaId: null,
+  esCredito: false,
 
-  seleccionarMesa: (id) => set({ mesaId: id }),
+  setMesa: (id) => set({ mesaId: id }),
+  setTipoPedido: (tipo) => set({ tipoPedido: tipo }),
+  setClienteData: (clienteId, empresaId, esCredito) => set({ clienteId, empresaId, esCredito }),
 
-  agregarProducto: (producto, cantidad, notas) => {
-    const itemsActuales = get().items;
-    
-    // CORRECCIÓN CRÍTICA:
-    // Buscamos si existe el producto con el MISMO ID y la MISMA NOTA.
-    // Tratamos undefined como string vacío para evitar errores de comparación.
-    const notaNormalizada = notas || '';
+  addItem: (producto, cantidad, notas = '', componentes = []) => {
+    const currentItems = get().items;
 
-    const existeIndex = itemsActuales.findIndex((i) => 
-      i.producto.id === producto.id && 
-      (i.notas || '') === notaNormalizada
+    const existingItemIndex = currentItems.findIndex(
+      (item) => 
+        item.producto.id === producto.id && 
+        item.notas === notas &&
+        JSON.stringify(item.componentes) === JSON.stringify(componentes)
     );
 
-    if (existeIndex >= 0) {
-      // Si existe exacto, sumamos cantidad
-      const nuevosItems = [...itemsActuales];
-      nuevosItems[existeIndex].cantidad += cantidad;
-      set({ items: nuevosItems });
+    if (existingItemIndex !== -1) {
+      const newItems = [...currentItems];
+      newItems[existingItemIndex].cantidad += cantidad;
+      set({ items: newItems });
     } else {
-      // Si es nuevo (o tiene nota distinta), agregamos nueva línea
       set({
-        items: [...itemsActuales, { producto, cantidad, notas: notaNormalizada }],
+        items: [
+          ...currentItems,
+          {
+            uniqueId: uuidv4(),
+            producto,
+            cantidad,
+            notas,
+            componentes
+          }
+        ]
       });
     }
   },
 
-  eliminarProducto: (productoId, notas) => {
-    const notaNormalizada = notas || '';
+  removeItem: (uniqueId) => {
+    set({ items: get().items.filter((i) => i.uniqueId !== uniqueId) });
+  },
+
+  updateQuantity: (uniqueId, cantidad) => {
+    if (cantidad < 1) return;
     set({
-      // Mantenemos el ítem si el ID es distinto O la nota es distinta
-      items: get().items.filter((i) => 
-        i.producto.id !== productoId || (i.notas || '') !== notaNormalizada
-      ),
+      items: get().items.map((item) => 
+        item.uniqueId === uniqueId ? { ...item, cantidad } : item
+      )
     });
   },
 
-  limpiarComanda: () => set({ mesaId: null, items: [] }),
+  clearComanda: () => set({ items: [], mesaId: null, clienteId: null, empresaId: null, esCredito: false }),
 
   total: () => {
-    return get().items.reduce((suma, item) => {
-      return suma + (Number(item.producto.precio) * item.cantidad);
+    return get().items.reduce((acc, item) => {
+      let subtotal = item.producto.precio * item.cantidad;
+
+      if (item.componentes) {
+        const totalComponentes = item.componentes.reduce((accHijo, hijo) => accHijo + (hijo.producto.precio * hijo.cantidad), 0);
+        subtotal += totalComponentes * item.cantidad; 
+      }
+      return acc + subtotal;
     }, 0);
-  },
+  }
 }));

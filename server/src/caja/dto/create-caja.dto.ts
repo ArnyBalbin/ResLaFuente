@@ -1,6 +1,6 @@
 import { IsNumber, IsNotEmpty, Min, IsOptional, IsString } from 'class-validator';
 
-export class CreateCajaDto {
+export class AbrirCajaDto {
   @IsNumber()
   @Min(0)
   @IsNotEmpty()

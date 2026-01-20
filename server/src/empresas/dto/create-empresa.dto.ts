@@ -1,4 +1,5 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsNumber, Min, IsInt } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsNumber, Min } from 'class-validator';
 
 export class CreateEmpresaDto {
   @IsString()
@@ -24,11 +25,11 @@ export class CreateEmpresaDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
-  limiteCredito?: number; // Ej: 5000 soles
+  limiteCredito?: number;
 
-  @IsOptional()
-  @IsInt()
+  @IsNumber()
   @Min(1)
+  @IsOptional()
+  @Type(() => Number)
   diaCierre?: number;
-  
 }

@@ -1,62 +1,35 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from "@/components/ui/sonner";
-import { useAuthStore } from '@/store/authStore';
-import { DashboardLayout } from '@/layouts/DashboardLayout';
-import { TomarPedidoPage } from '@/pages/TomarPedidoPage';
-import { MesasPage } from '@/pages/MesasPage';
-import { CocinaPage } from '@/pages/CocinaPage';
-import { LoginPage } from '@/pages/LoginPage';
-import { CajaPage } from '@/pages/CajaPage';
-import { UsuariosPage } from '@/pages/admin/UsuariosPage';
-import { CategoriasPage } from '@/pages/admin/CategoriasPage';
-import { ProductosPage } from '@/pages/admin/ProductosPage';
-import { ClientesPage } from '@/pages/admin/ClientesPage';
-import { EmpresasPage } from '@/pages/admin/EmpresasPage';
-import { InventarioPage } from './pages/InventarioPage';
-import { DashboardPage } from '@/pages/DashboardPage';
+import { Toaster } from './components/ui/sonner';
 
+import DashboardLayout from './layouts/DashboardLayout';
+
+const LoginPage = () => <div className="flex h-screen items-center justify-center"><h1>Login Page</h1></div>;
+const HomePage = () => <div><h1>Bienvenido al Dashboard</h1></div>;
+const PosPage = () => <div><h1>Punto de Venta (POS)</h1></div>;
 
 const queryClient = new QueryClient();
-
-const ProtectedRoute = () => {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <Outlet />;
-};
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
+          {/* Rutas Públicas */}
           <Route path="/login" element={<LoginPage />} />
 
-          <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<DashboardLayout />}>
-              <Route index element={<Navigate to="/mesas" replace />} />
-              <Route path="dashboard" element={<DashboardPage />} />
-              <Route path="admin/usuarios" element={<UsuariosPage />} />
-              <Route path="admin/clientes" element={<ClientesPage />} />
-              <Route path="admin/empresas" element={<EmpresasPage />} />
-              <Route path="admin/categorias" element={<CategoriasPage />} />
-              <Route path="admin/productos" element={<ProductosPage />} />
-              <Route path="tomar-pedido" element={<TomarPedidoPage />} />
-              <Route path="mesas" element={<MesasPage />} />
-              <Route path="cocina" element={<CocinaPage />} />
-              <Route path="caja" element={<CajaPage />} />
-              <Route path="inventario" element={<InventarioPage />} />
-            </Route>
+          {/* Rutas Protegidas (Dashboard) */}
+          <Route element={<DashboardLayout />}>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/pos" element={<PosPage />} />
+            {/* Agrega más rutas aquí */}
           </Route>
 
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          {/* Catch all */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
-      <Toaster richColors position="top-center" />
+      <Toaster />
     </QueryClientProvider>
   );
 }

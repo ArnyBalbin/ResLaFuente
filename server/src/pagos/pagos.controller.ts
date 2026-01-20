@@ -1,14 +1,16 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
+import { Controller, Get, Post, Body, Request, UseGuards } from '@nestjs/common';
 import { PagosService } from './pagos.service';
 import { CreatePagoDto } from './dto/create-pago.dto';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('pagos')
 export class PagosController {
   constructor(private readonly pagosService: PagosService) {}
 
   @Post()
-  create(@Body() createPagoDto: CreatePagoDto) {
-    return this.pagosService.create(createPagoDto);
+  registrarPago(@Request() req, @Body() createPagoDto: CreatePagoDto) {
+    return this.pagosService.create(req.user.userId, createPagoDto);
   }
 
   @Get()

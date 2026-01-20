@@ -1,55 +1,64 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { CreateInventarioDto } from './dto/create-inventario.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { TipoMovimiento } from '@prisma/client';
 
 @Injectable()
 export class InventarioService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createInventarioDto: CreateInventarioDto) {
-    const { productoId, tipo, cantidad, motivo } = createInventarioDto;
+  async create(createMovimientoDto: CreateInventarioDto) {
+    const { productoId, tipo, cantidad, costoUnitario, motivo } = createMovimientoDto;
 
-    const producto = await this.prisma.producto.findUnique({ where: { id: productoId } });
-    if (!producto) throw new BadRequestException('Producto no encontrado');
+    // 1. Verificar que el producto exista
+    const producto = await this.prisma.producto.findUnique({
+      where: { id: productoId }
+    });
 
-
-    return await this.prisma.$transaction(async (tx) => {
-      
+    if (!producto) throw new NotFoundException('Producto no encontrado');
+    
+    return this.prisma.$transaction(async (tx) => {
       const movimiento = await tx.movimientoInventario.create({
         data: {
           productoId,
           tipo,
           cantidad,
           motivo,
-          fecha: new Date()
+          costoUnitario: costoUnitario ? costoUnitario : producto.costo
         }
       });
 
-      const operacion = tipo === 'ENTRADA' 
-        ? { increment: cantidad } 
-        : { decrement: cantidad };
+      if (producto.controlarStock) {
+        let nuevoStock = producto.stock;
+        
+        if (tipo === TipoMovimiento.ENTRADA) {
+           nuevoStock += cantidad;
 
-      await tx.producto.update({
-        where: { id: productoId },
-        data: { stock: operacion }
-      });
+           if (costoUnitario) {
+             await tx.producto.update({
+               where: { id: productoId },
+               data: { costo: costoUnitario }
+             });
+           }
+        } else {
+           nuevoStock -= cantidad;
+        }
+
+        await tx.producto.update({
+          where: { id: productoId },
+          data: { stock: nuevoStock }
+        });
+      }
 
       return movimiento;
     });
   }
 
-  findAll() {
-    return this.prisma.movimientoInventario.findMany({
-      include: { producto: true },
-      orderBy: { fecha: 'desc' }
-    });
-  }
-
-  findByProduct(productoId: number) {
+  async findKardexByProducto(productoId: number) {
     return this.prisma.movimientoInventario.findMany({
       where: { productoId },
-      include: { producto: true },
-      orderBy: { fecha: 'desc' }
+      orderBy: { fecha: 'desc' },
+      take: 50
     });
   }
 }

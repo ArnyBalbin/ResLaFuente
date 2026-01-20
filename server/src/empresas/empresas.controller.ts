@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { EmpresasService } from './empresas.service';
 import { CreateEmpresaDto } from './dto/create-empresa.dto';
 import { UpdateEmpresaDto } from './dto/update-empresa.dto';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('empresas')
 export class EmpresasController {
   constructor(private readonly empresasService: EmpresasService) {}
@@ -31,4 +33,10 @@ export class EmpresasController {
   remove(@Param('id') id: string) {
     return this.empresasService.remove(+id);
   }
+
+  @Patch(':id/pagar')
+  pagarDeuda(@Param('id', ParseIntPipe) id: number, @Body('monto') monto: number) {
+    return this.empresasService.amortizarDeuda(id, monto);
+  }
+  
 }

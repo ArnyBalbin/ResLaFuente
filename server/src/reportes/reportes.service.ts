@@ -1,74 +1,101 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { EstadoPedido } from '@prisma/client';
 
 @Injectable()
 export class ReportesService {
   constructor(private prisma: PrismaService) {}
 
-  async obtenerDashboard() {
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    
-    const hace7dias = new Date();
-    hace7dias.setDate(hoy.getDate() - 7);
+  async generarBalance(inicio: Date, fin: Date) {
 
-    const pagosHoy = await this.prisma.pago.aggregate({
-      _sum: { monto: true },
+    const ventas = await this.prisma.pedido.aggregate({
       where: {
-        fecha: { gte: hoy }
-      }
+        fecha: { gte: inicio, lte: fin },
+        estado: EstadoPedido.CERRADO,
+      },
+      _sum: { total: true },
+      _count: { id: true }
     });
 
-    const pedidosHoy = await this.prisma.pedido.count({
+    const totalVentas = Number(ventas._sum.total) || 0;
+    const cantidadPedidos = ventas._count.id || 0;
+
+    const pagosPorMetodo = await this.prisma.pago.groupBy({
+      by: ['metodo'],
       where: {
-        fecha: { gte: hoy },
-        estado: 'CERRADO'
-      }
+        fecha: { gte: inicio, lte: fin }
+      },
+      _sum: { monto: true }
     });
 
-    const topProductosRaw = await this.prisma.detallePedido.groupBy({
+    const egresos = await this.prisma.gasto.aggregate({
+      where: {
+        fecha: { gte: inicio, lte: fin }
+      },
+      _sum: { monto: true }
+    });
+
+    const totalEgresos = Number(egresos._sum.monto) || 0;
+
+    const desgloseEgresos = await this.prisma.gasto.groupBy({
+      by: ['esCosto'],
+      where: { fecha: { gte: inicio, lte: fin } },
+      _sum: { monto: true }
+    });
+
+    const costosVenta = Number(desgloseEgresos.find(e => e.esCosto === true)?._sum.monto || 0);
+    const gastosOperativos = Number(desgloseEgresos.find(e => e.esCosto === false)?._sum.monto || 0);
+
+    const rankingPlatos = await this.prisma.detallePedido.groupBy({
       by: ['productoId'],
+      where: {
+        pedido: { fecha: { gte: inicio, lte: fin }, estado: EstadoPedido.CERRADO }
+      },
       _sum: { cantidad: true },
       orderBy: { _sum: { cantidad: 'desc' } },
-      take: 5,
+      take: 5
     });
 
-    const topProductos = await Promise.all(topProductosRaw.map(async (item) => {
-      const prod = await this.prisma.producto.findUnique({ where: { id: item.productoId }});
+    const topProductos = await Promise.all(rankingPlatos.map(async (item) => {
+      const prod = await this.prisma.producto.findUnique({ where: { id: item.productoId } });
       return {
         nombre: prod?.nombre || 'Desconocido',
         cantidad: item._sum.cantidad
       };
     }));
 
-    const pagosSemana = await this.prisma.pago.findMany({
-      where: { fecha: { gte: hace7dias } },
-      select: { fecha: true, monto: true }
-    });
-
-    const mapaVentas = new Map<string, number>();
-
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = d.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit' }); // "14/01"
-      mapaVentas.set(key, 0);
-    }
-
-    pagosSemana.forEach(pago => {
-      const key = new Date(pago.fecha).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit' });
-      if (mapaVentas.has(key)) {
-        mapaVentas.set(key, mapaVentas.get(key)! + Number(pago.monto));
-      }
-    });
-
-    const ventasPorDia = Array.from(mapaVentas, ([fecha, total]) => ({ fecha, total }));
-
     return {
-      ventasHoy: pagosHoy._sum.monto || 0,
-      pedidosHoy,
-      topProductos,
-      ventasPorDia
+      periodo: { inicio, fin },
+      resumenFinanciero: {
+        ingresosTotales: totalVentas,
+        egresosTotales: totalEgresos,
+        utilidadNeta: totalVentas - totalEgresos,
+        margen: totalVentas > 0 ? ((totalVentas - totalEgresos) / totalVentas * 100).toFixed(1) + '%' : '0%'
+      },
+      detalleIngresos: {
+        ticketPromedio: cantidadPedidos > 0 ? (totalVentas / cantidadPedidos).toFixed(2) : 0,
+        transacciones: cantidadPedidos,
+        porMetodoPago: pagosPorMetodo.map(p => ({ metodo: p.metodo, total: p._sum.monto }))
+      },
+      detalleEgresos: {
+        costosVenta: costosVenta,
+        gastosOperativos: gastosOperativos
+      },
+      topProductos
     };
+  }
+
+  async reporteDiario() {
+    const inicio = new Date();
+    inicio.setHours(0, 0, 0, 0);
+    const fin = new Date();
+    fin.setHours(23, 59, 59, 999);
+    return this.generarBalance(inicio, fin);
+  }
+
+  async reporteMensual(mes: number, anio: number) {
+    const inicio = new Date(anio, mes - 1, 1);
+    const fin = new Date(anio, mes, 0, 23, 59, 59);
+    return this.generarBalance(inicio, fin);
   }
 }

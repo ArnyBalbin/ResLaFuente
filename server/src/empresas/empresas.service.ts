@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { CreateEmpresaDto } from './dto/create-empresa.dto';
 import { UpdateEmpresaDto } from './dto/update-empresa.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -8,42 +8,34 @@ export class EmpresasService {
   constructor(private prisma: PrismaService) {}
 
   async create(createEmpresaDto: CreateEmpresaDto) {
-    // 1. Validar RUC único
-    const existe = await this.prisma.empresa.findUnique({
-      where: { ruc: createEmpresaDto.ruc }
-    });
-    
-    if (existe) throw new BadRequestException('Ya existe una empresa con este RUC');
-
-    // 2. Crear Empresa
-    return this.prisma.empresa.create({
-      data: {
-        razonSocial: createEmpresaDto.razonSocial,
-        ruc: createEmpresaDto.ruc,
-        direccion: createEmpresaDto.direccion,
-        telefono: createEmpresaDto.telefono,
-        tieneCredito: createEmpresaDto.tieneCredito || false,
-        limiteCredito: createEmpresaDto.limiteCredito || 0,
-        diaCierre: createEmpresaDto.diaCierre || 30
+    try {
+      return await this.prisma.empresa.create({
+        data: {
+          ...createEmpresaDto,
+          creditoUsado: 0,
+        },
+      });
+    } catch (error) {
+      if (error.code === 'P2002') {
+        throw new ConflictException('Ya existe una empresa con ese RUC');
       }
-    });
+      throw error;
+    }
   }
 
-  findAll() {
+  async findAll() {
     return this.prisma.empresa.findMany({
-      include: {
-        _count: { select: { empleados: true } } // Para saber cuántos empleados tiene
-      },
-      orderBy: { razonSocial: 'asc' }
+      orderBy: { razonSocial: 'asc' },
+      include: { _count: { select: { empleados: true } } }
     });
   }
 
   async findOne(id: number) {
-    const empresa = await this.prisma.empresa.findUnique({ 
+    const empresa = await this.prisma.empresa.findUnique({
       where: { id },
       include: { empleados: true }
     });
-    if (!empresa) throw new BadRequestException('Empresa no encontrada');
+    if (!empresa) throw new NotFoundException('Empresa no encontrada');
     return empresa;
   }
 
@@ -55,7 +47,6 @@ export class EmpresasService {
   }
 
   async remove(id: number) {
-    // Validar si tiene empleados o deuda antes de borrar
     const empresa = await this.prisma.empresa.findUnique({
       where: { id },
       include: { empleados: true, pedidosCredito: true }
@@ -66,5 +57,21 @@ export class EmpresasService {
     }
 
     return this.prisma.empresa.delete({ where: { id } });
+  }
+
+  async amortizarDeuda(id: number, monto: number) {
+    const empresa = await this.findOne(id);
+
+    const deudaActual = Number(empresa.creditoUsado);
+
+    if (monto <= 0) throw new BadRequestException('El monto a pagar debe ser positivo');
+    if (monto > deudaActual) throw new BadRequestException('No puedes pagar más de lo que deben');
+
+    return this.prisma.empresa.update({
+      where: { id },
+      data: {
+        creditoUsado: { decrement: monto } // Restamos la deuda
+      }
+    });
   }
 }

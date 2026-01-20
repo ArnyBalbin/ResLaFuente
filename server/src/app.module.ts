@@ -13,12 +13,11 @@ import { EmpresasModule } from './empresas/empresas.module';
 import { ClientesModule } from './clientes/clientes.module';
 import { CajaModule } from './caja/caja.module';
 import { PagosModule } from './pagos/pagos.module';
-import { FacturacionModule } from './facturacion/facturacion.module';
-import { FilesModule } from './files/files.module';
 import { InventarioModule } from './inventario/inventario.module';
 import { ReportesModule } from './reportes/reportes.module';
 import { AuthModule } from './auth/auth.module';
 import { GastosModule } from './gastos/gastos.module';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -26,7 +25,7 @@ import { GastosModule } from './gastos/gastos.module';
       rootPath: join(process.cwd(), 'uploads'),
       serveRoot: '/uploads',
     }),
-    PrismaModule, ProductosModule, CategoriasModule, MesasModule, PedidosModule, UsuariosModule, EmpresasModule, ClientesModule, CajaModule, PagosModule, FacturacionModule, FilesModule, InventarioModule, ReportesModule, AuthModule, GastosModule],
+    PrismaModule, ProductosModule, CategoriasModule, MesasModule, PedidosModule, UsuariosModule, EmpresasModule, ClientesModule, CajaModule, PagosModule, InventarioModule, ReportesModule, AuthModule, GastosModule, CloudinaryModule],
   controllers: [AppController],
   providers: [AppService],
 })

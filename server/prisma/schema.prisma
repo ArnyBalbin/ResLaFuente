@@ -227,8 +227,8 @@ model MovimientoInventario {
   tipo          TipoMovimiento
   cantidad      Int
   fecha         DateTime       @default(now())
-  motivo        String?        // "Compra", "Mermas", "Venta #123"
-  costoUnitario Decimal?       @db.Decimal(10, 2) // <--- AGREGADO: Importante para saber valor del inventario
+  motivo        String?        
+  costoUnitario Decimal?       @db.Decimal(10, 2)
   
   producto      Producto       @relation(fields: [productoId], references: [id], onDelete: Cascade)
 }

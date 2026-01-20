@@ -1,4 +1,4 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { CreateCajaDto } from './create-caja.dto';
+import { AbrirCajaDto, CerrarCajaDto } from './create-caja.dto';
 
-export class UpdateCajaDto extends PartialType(CreateCajaDto) {}
+export class UpdateCajaDto extends PartialType(AbrirCajaDto) {}

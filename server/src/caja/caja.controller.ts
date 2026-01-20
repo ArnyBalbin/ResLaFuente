@@ -1,23 +1,25 @@
-import { Controller, Get, Post, Body, Patch, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Request } from '@nestjs/common';
 import { CajaService } from './caja.service';
-import { CreateCajaDto, CerrarCajaDto } from './dto/create-caja.dto';
+import { AbrirCajaDto, CerrarCajaDto } from './dto/create-caja.dto';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('caja')
 export class CajaController {
   constructor(private readonly cajaService: CajaService) {}
 
   @Post('abrir')
-  abrir(@Body() createCajaDto: CreateCajaDto) {
-    return this.cajaService.abrir(createCajaDto);
+  abrir(@Request() req, @Body() abrirCajaDto: AbrirCajaDto) {
+    return this.cajaService.abrir(req.user.userId, abrirCajaDto);
   }
 
-  @Patch('cerrar/:id')
-  cerrar(@Param('id') id: string, @Body() cerrarCajaDto: CerrarCajaDto) {
-    return this.cajaService.cerrar(+id, cerrarCajaDto);
+  @Post('cerrar')
+  cerrar(@Request() req, @Body() cerrarCajaDto: CerrarCajaDto) {
+    return this.cajaService.cerrar(req.user.userId, cerrarCajaDto);
   }
 
-  @Get('abierta/:usuarioId')
-  obtenerAbierta(@Param('usuarioId') usuarioId: string) {
-    return this.cajaService.obtenerCajaAbierta(+usuarioId);
+  @Get('estado')
+  verEstado(@Request() req) {
+    return this.cajaService.obtenerCajaAbierta(req.user.userId);
   }
 }

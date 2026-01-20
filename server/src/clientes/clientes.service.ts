@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
 import { CreateClienteDto } from './dto/create-cliente.dto';
 import { UpdateClienteDto } from './dto/update-cliente.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -8,15 +8,6 @@ export class ClientesService {
   constructor(private prisma: PrismaService) {}
 
   async create(createClienteDto: CreateClienteDto) {
-    // 1. Validar que el DNI no se repita (solo si viene DNI)
-    if (createClienteDto.dni) {
-      const existe = await this.prisma.cliente.findUnique({
-        where: { dni: createClienteDto.dni }
-      });
-      if (existe) throw new BadRequestException('Ya existe un cliente con este DNI');
-    }
-
-    // 2. Validar que la empresa exista (si viene empresaId)
     if (createClienteDto.empresaId) {
       const empresa = await this.prisma.empresa.findUnique({
         where: { id: createClienteDto.empresaId }
@@ -24,41 +15,54 @@ export class ClientesService {
       if (!empresa) throw new BadRequestException('La empresa especificada no existe');
     }
 
-    // 3. Crear el Cliente
-    return this.prisma.cliente.create({
-      data: createClienteDto
-    });
+    try {
+      return await this.prisma.cliente.create({
+        data: createClienteDto,
+      });
+    } catch (error) {
+      if (error.code === 'P2002') {
+        throw new ConflictException('Ya existe un cliente con ese DNI o Email');
+      }
+      throw error;
+    }
   }
 
-  findAll() {
+  async findAll(query?: string) {
+    if (!query) {
+       return this.prisma.cliente.findMany({ 
+         take: 20, 
+         orderBy: { id: 'desc' },
+         include: { empresa: true }
+       });
+    }
+    
     return this.prisma.cliente.findMany({
-      include: { 
-        empresa: true // Traemos los datos de la empresa para ver dónde trabaja
+      where: {
+        OR: [
+          { nombre: { contains: query, mode: 'insensitive' } },
+          { dni: { contains: query } }
+        ]
       },
-      orderBy: { nombre: 'asc' }
+      include: { empresa: true }
     });
   }
 
   async findOne(id: number) {
     const cliente = await this.prisma.cliente.findUnique({
       where: { id },
-      include: { empresa: true }
+      include: { empresa: true, pedidos: true }
     });
-
-    if (!cliente) throw new NotFoundException(`El cliente #${id} no existe`);
+    if (!cliente) throw new NotFoundException('Cliente no encontrado');
     return cliente;
   }
 
   async update(id: number, updateClienteDto: UpdateClienteDto) {
-    // Validar existencia antes de actualizar
     await this.findOne(id);
 
-    // Validar DNI duplicado si se está actualizando
     if (updateClienteDto.dni) {
       const existe = await this.prisma.cliente.findUnique({
         where: { dni: updateClienteDto.dni }
       });
-      // Ojo: Validamos que exista Y que no sea el mismo cliente que estamos editando
       if (existe && existe.id !== id) {
         throw new BadRequestException('Ya existe otro cliente con este DNI');
       }
@@ -71,7 +75,7 @@ export class ClientesService {
   }
 
   async remove(id: number) {
-    await this.findOne(id); // Validar que existe
+    await this.findOne(id);
     return this.prisma.cliente.delete({
       where: { id }
     });

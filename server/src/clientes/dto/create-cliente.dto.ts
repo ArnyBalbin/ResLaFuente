@@ -9,9 +9,21 @@ export class CreateClienteDto {
   @IsOptional()
   dni?: string;
 
+  @IsString()
+  @IsOptional()
+  ruc?: string;
+
   @IsEmail()
   @IsOptional()
   email?: string;
+
+  @IsString()
+  @IsOptional()
+  telefono?: string;
+
+  @IsString()
+  @IsOptional()
+  direccion?: string;
 
   @IsInt()
   @IsOptional()

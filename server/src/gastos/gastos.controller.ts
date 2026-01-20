@@ -1,34 +1,27 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { 
+  Controller, 
+  Post, 
+  Body, 
+  Get, 
+  UseGuards, 
+  Request 
+} from '@nestjs/common';
 import { GastosService } from './gastos.service';
 import { CreateGastoDto } from './dto/create-gasto.dto';
-import { UpdateGastoDto } from './dto/update-gasto.dto';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('gastos')
 export class GastosController {
   constructor(private readonly gastosService: GastosService) {}
 
   @Post()
-  create(@Body() createGastoDto: CreateGastoDto) {
-    return this.gastosService.create(createGastoDto);
+  create(@Request() req, @Body() createGastoDto: CreateGastoDto) {
+    return this.gastosService.create(req.user.userId, createGastoDto);
   }
 
-  @Get()
-  findAll() {
-    return this.gastosService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.gastosService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateGastoDto: UpdateGastoDto) {
-    return this.gastosService.update(+id, updateGastoDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.gastosService.remove(+id);
+  @Get('hoy')
+  findAllHoy() {
+    return this.gastosService.findAllHoy();
   }
 }

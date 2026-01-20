@@ -1,12 +1,5 @@
 import { IsNumber, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
-
-enum MetodoPago {
-  EFECTIVO = 'EFECTIVO',
-  YAPE_PLIN = 'YAPE_PLIN',
-  TARJETA = 'TARJETA',
-  CREDITO_EMPRESA = 'CREDITO_EMPRESA',
-}
-
+import { MetodoPago } from '@prisma/client';
 export class CreatePagoDto {
   @IsNumber()
   @IsNotEmpty()

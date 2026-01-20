@@ -1,57 +1,52 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { CreateCajaDto, CerrarCajaDto } from './dto/create-caja.dto';
+import { Injectable, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { AbrirCajaDto, CerrarCajaDto } from './dto/create-caja.dto';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class CajaService {
   constructor(private prisma: PrismaService) {}
 
-  async abrir(createCajaDto: CreateCajaDto) {
+  async abrir(usuarioId: number, abrirCajaDto: AbrirCajaDto) {
     const cajaAbierta = await this.prisma.cajaDiaria.findFirst({
-      where: {
-        usuarioId: createCajaDto.usuarioId,
-        fechaCierre: null
-      }
+      where: { usuarioId, estado: true },
     });
-
     if (cajaAbierta) {
-      throw new BadRequestException('Este usuario ya tiene una caja abierta. Debe cerrarla primero.');
+      throw new ConflictException('Ya tienes una caja abierta. Ciérrala antes de abrir otra.');
     }
 
     return this.prisma.cajaDiaria.create({
       data: {
-        usuarioId: createCajaDto.usuarioId,
-        montoInicial: createCajaDto.montoInicial,
-        estado: true
-      }
+        usuarioId,
+        montoInicial: abrirCajaDto.montoInicial,
+        fechaApertura: new Date(),
+        estado: true,
+      },
     });
   }
 
-  async cerrar(id: number, cerrarCajaDto: CerrarCajaDto) {
-    const caja = await this.prisma.cajaDiaria.findUnique({ where: { id } });
-    
-    if (!caja) throw new BadRequestException('Caja no encontrada');
-    if (caja.fechaCierre) throw new BadRequestException('Esta caja ya está cerrada');
+  async cerrar(usuarioId: number, cerrarCajaDto: CerrarCajaDto) {
+    const caja = await this.prisma.cajaDiaria.findFirst({
+      where: { usuarioId, estado: true },
+    });
+    if (!caja) throw new NotFoundException('No tienes una caja abierta para cerrar.');
 
     return this.prisma.cajaDiaria.update({
-      where: { id },
+      where: { id: caja.id },
       data: {
         fechaCierre: new Date(),
         montoFinal: cerrarCajaDto.montoFinal,
         observaciones: cerrarCajaDto.observaciones,
-        estado: false
-      }
+        estado: false,
+      },
     });
   }
 
   async obtenerCajaAbierta(usuarioId: number) {
     const caja = await this.prisma.cajaDiaria.findFirst({
-      where: {
-        usuarioId,
-        fechaCierre: null
-      },
+      where: { usuarioId, estado: true },
       include: {
-        pagos: true
+         pagos: true,
+         gastos: true
       }
     });
     return caja || null;
