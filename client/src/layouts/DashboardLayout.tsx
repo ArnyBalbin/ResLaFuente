@@ -1,26 +1,35 @@
-import { useEffect } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
-import { Sidebar } from './Sidebar';
+import { Outlet, Navigate, useLocation } from 'react-router-dom';
+import { Sidebar } from '../components/layout/Sidebar';
+import { Header } from '../components/layout/Header';
 import { useAuthStore } from '../store/authStore';
 
+
 export default function DashboardLayout() {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const navigate = useNavigate();
+  const token = useAuthStore((state) => state.token);
+  const location = useLocation();
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-    }
-  }, [isAuthenticated, navigate]);
-
-  if (!isAuthenticated) return null;
+  if (!token) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <main className="flex-1 ml-64 p-8 overflow-y-auto h-screen">
-        <Outlet />
-      </main>
+    <div className="min-h-screen bg-muted/20">
+
+      <div className="hidden md:flex h-full w-64 flex-col fixed inset-y-0 z-50">
+        <Sidebar />
+      </div>
+
+      <div className="md:ml-64 flex flex-col min-h-screen transition-all duration-300">
+        
+        <Header />
+
+        <main className="flex-1 p-6 md:p-8 overflow-y-auto">
+          <div className="mx-auto max-w-6xl animate-fade-in">
+             <Outlet />
+          </div>
+        </main>
+        
+      </div>
     </div>
   );
 }
