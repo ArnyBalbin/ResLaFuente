@@ -17,7 +17,7 @@ model Usuario {
 
   pedidos   Pedido[]
   cajas     CajaDiaria[]
-  gastos    Gasto[]      // Quien registró el gasto
+  gastos    Gasto[]
 }
 
 enum Rol {

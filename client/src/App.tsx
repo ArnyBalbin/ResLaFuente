@@ -4,6 +4,7 @@ import { Toaster } from './components/ui/sonner';
 import UsuariosPage from './pages/admin/usuarios/UsuariosPage';
 import LoginPage from './pages/auth/LoginPage';
 import HomePage from './pages/dashboard/HomePage';
+import ProfilePage from './pages/dashboard/ProfilePage';
 import DashboardLayout from './layouts/DashboardLayout';
 
 const PosPage = () => <div><h1>Punto de Venta (POS)</h1></div>;
@@ -19,6 +20,7 @@ function App() {
 
           <Route element={<DashboardLayout />}>
             <Route path="/" element={<HomePage />} />
+            <Route path="/profile" element={<ProfilePage />} />
             <Route path="/usuarios" element={<UsuariosPage />} />
             <Route path="/pos" element={<PosPage />} />
           </Route>

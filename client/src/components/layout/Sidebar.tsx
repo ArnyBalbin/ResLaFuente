@@ -34,6 +34,12 @@ const menuItems: MenuItem[] = [
     roles: ['ADMIN', 'MOZO', 'CAJA'] 
   },
   { 
+    icon: Users, 
+    label: 'Personal', 
+    to: '/usuarios', 
+    roles: ['ADMIN']
+  },
+  { 
     icon: ShoppingCart, 
     label: 'Punto de Venta', 
     to: '/pos', 
@@ -77,13 +83,6 @@ const menuItems: MenuItem[] = [
     to: '/empresas', 
     roles: ['ADMIN', 'CAJA'] 
   },
-
-  { 
-    icon: Users, 
-    label: 'Personal', 
-    to: '/usuarios', 
-    roles: ['ADMIN']
-  },
   { 
     icon: FileBarChart, 
     label: 'Reportes', 
@@ -114,11 +113,11 @@ export function Sidebar() {
   return (
     <aside className="w-64 bg-white text-slate-800 h-screen flex flex-col fixed left-0 top-0 border-r border-slate-200 shadow-sm z-50">
 
-      <div className="h-24 flex items-center justify-center border-b border-slate-100 p-4 bg-white">
+      <div className="h-50 flex items-center justify-center border-b border-slate-100 px-4">
         <img 
           src={logo} 
           alt="La Fuente Logo" 
-          className="h-full object-contain"
+          className="max-w-[200px] w-full h-auto object-contain"
         />
       </div>
 

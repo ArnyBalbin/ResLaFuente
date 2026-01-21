@@ -9,11 +9,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { UsuarioForm } from './UsuarioForm'; // Lo crearemos en el siguiente paso
+import { UsuarioForm } from './UsuarioForm';
 import type { Usuario } from '@/types';
 
 export const UsuariosView = () => {
   const { usuarios, isLoading, eliminarUsuario } = useUsuarios();
+  const personalStaff = usuarios.filter(u => u.rol !== 'ADMIN');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<Usuario | null>(null);
 
@@ -28,7 +29,7 @@ export const UsuariosView = () => {
     }
   };
 
-  if (isLoading) return <div className="p-4">Cargando usuarios...</div>;
+  if (isLoading) return <div className="p-4">Cargando personal...</div>;
 
   return (
     <div className="space-y-6">
@@ -73,7 +74,7 @@ export const UsuariosView = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {usuarios.map((user) => (
+            {personalStaff.map((user) => (
               <tr key={user.id} className="hover:bg-muted/20 transition-colors">
                 <td className="px-6 py-4 font-medium flex items-center gap-3">
                   <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
@@ -102,7 +103,7 @@ export const UsuariosView = () => {
                 </td>
               </tr>
             ))}
-            {usuarios.length === 0 && (
+            {personalStaff.length === 0 && (
                <tr>
                  <td colSpan={4} className="p-8 text-center text-muted-foreground">
                    No hay usuarios registrados aparte de ti.
