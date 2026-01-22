@@ -24,4 +24,11 @@ export const usuariosService = {
   delete: async (id: number) => {
     await api.delete(`/usuarios/${id}`);
   },
+
+  restore: async (id: number) => {
+    const { data } = await api.patch<{ message: string }>(
+      `/usuarios/${id}/restore`
+    );
+    return data;
+  },
 };

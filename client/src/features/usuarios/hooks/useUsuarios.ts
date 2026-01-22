@@ -1,13 +1,16 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { usuariosService, type CreateUsuarioDto } from '../services/usuarios.service';
-import { toast } from 'sonner';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  usuariosService,
+  type CreateUsuarioDto,
+} from "../services/usuarios.service";
+import { toast } from "sonner";
 
 export const useUsuarios = () => {
   const queryClient = useQueryClient();
 
   // 1. Obtener Usuarios (Query)
   const usuariosQuery = useQuery({
-    queryKey: ['usuarios'],
+    queryKey: ["usuarios"],
     queryFn: usuariosService.getAll,
   });
 
@@ -15,31 +18,45 @@ export const useUsuarios = () => {
   const createMutation = useMutation({
     mutationFn: usuariosService.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] }); // Recarga la tabla
-      toast.success('Usuario creado correctamente');
+      queryClient.invalidateQueries({ queryKey: ["usuarios"] }); // Recarga la tabla
+      toast.success("Usuario creado correctamente");
     },
-    onError: () => toast.error('Error al crear usuario'),
+    onError: () => toast.error("Error al crear usuario"),
   });
 
   // 3. Actualizar Usuario (Mutation)
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<CreateUsuarioDto> }) =>
-      usuariosService.update(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<CreateUsuarioDto>;
+    }) => usuariosService.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-      toast.success('Usuario actualizado');
+      queryClient.invalidateQueries({ queryKey: ["usuarios"] });
+      toast.success("Usuario actualizado");
     },
-    onError: () => toast.error('Error al actualizar'),
+    onError: () => toast.error("Error al actualizar"),
   });
 
   // 4. Eliminar Usuario (Mutation)
   const deleteMutation = useMutation({
     mutationFn: usuariosService.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-      toast.success('Usuario eliminado');
+      queryClient.invalidateQueries({ queryKey: ["usuarios"] });
+      toast.success("Usuario eliminado");
     },
-    onError: () => toast.error('Error al eliminar'),
+    onError: () => toast.error("Error al eliminar"),
+  });
+
+  const restaurarMutation = useMutation({
+    mutationFn: usuariosService.restore,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["usuarios"] });
+      toast.success("Usuario reactivado correctamente");
+    },
+    onError: () => toast.error("Error al reactivar usuario"),
   });
 
   return {
@@ -49,5 +66,6 @@ export const useUsuarios = () => {
     crearUsuario: createMutation.mutateAsync,
     actualizarUsuario: updateMutation.mutateAsync,
     eliminarUsuario: deleteMutation.mutateAsync,
+    restaurarUsuario: restaurarMutation.mutateAsync,
   };
 };

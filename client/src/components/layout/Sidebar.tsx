@@ -35,7 +35,7 @@ const menuItems: MenuItem[] = [
   },
   { 
     icon: Users, 
-    label: 'Personal', 
+    label: 'Usuarios', 
     to: '/usuarios', 
     roles: ['ADMIN']
   },

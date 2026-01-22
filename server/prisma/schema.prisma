@@ -27,7 +27,7 @@ enum Rol {
   CAJA
 }
 
-model Empresa { // Para Créditos Corporativos
+model Empresa {
   id             Int       @id @default(autoincrement())
   razonSocial    String
   ruc            String    @unique
@@ -46,8 +46,8 @@ model Empresa { // Para Créditos Corporativos
 model Cliente {
   id              Int      @id @default(autoincrement())
   nombre          String
-  dni             String?  @unique // <--- Mejor unique para evitar duplicados
-  ruc             String?  // <--- AGREGADO: Por si piden factura a nombre personal/negocio
+  dni             String?  @unique
+  ruc             String?  
   email           String?
   telefono        String?
   direccion       String?
@@ -89,11 +89,11 @@ model Producto {
 }
 
 enum TipoProducto {
-  CARTA       // Lomo saltado, Arroz con Pollo (Plato único)
-  MENU        // Menu Económico, Menu Ejecutivo (Pide entrada obligatoria)
-  GUARNICION  // Sopa, Huancaina, Arroz blanco (Generalmente precio 0 o extra)
-  BEBIDA      // Gaseosas, Infusiones
-  EXTRA       // Tapper, Huevo frito extra
+  CARTA
+  MENU
+  GUARNICION
+  BEBIDA
+  EXTRA
 }
 
 model Mesa {
@@ -108,21 +108,21 @@ model Mesa {
 model Pedido {
   id        Int          @id @default(autoincrement())
   
-  usuarioId Int          // Mozo que atendió
+  usuarioId Int
   usuario   Usuario      @relation(fields: [usuarioId], references: [id])
   
-  clienteId Int?         // Cliente asignado (opcional si es anonimo)
+  clienteId Int?
   cliente   Cliente?     @relation(fields: [clienteId], references: [id])
 
   mesaId    Int?
   mesa      Mesa?        @relation(fields: [mesaId], references: [id])
 
   esCredito Boolean      @default(false)
-  empresaId Int?         // Si es crédito, a qué empresa se carga
+  empresaId Int?
   empresa   Empresa?     @relation(fields: [empresaId], references: [id])
 
   tipo      TipoPedido   @default(MESA)
-  direccion String?      // Para Delivery
+  direccion String?
   
   estado    EstadoPedido @default(PENDIENTE)
   total     Decimal      @db.Decimal(10, 2)
@@ -139,12 +139,12 @@ enum TipoPedido {
 }
 
 enum EstadoPedido {
-  PENDIENTE    // Enviado a cocina
-  EN_PROCESO   // Cocinando
-  LISTO        // En mostrador/pase
-  SERVIDO      // Entregado al cliente
-  CERRADO      // Pagado y finalizado
-  CANCELADO    // Anulado
+  PENDIENTE
+  EN_PROCESO
+  LISTO
+  SERVIDO
+  CERRADO
+  CANCELADO
 }
 
 model DetallePedido {
@@ -165,13 +165,13 @@ model DetallePedido {
 
 model CajaDiaria {
   id            Int       @id @default(autoincrement())
-  usuarioId     Int       // Cajero responsable
+  usuarioId     Int       
   fechaApertura DateTime  @default(now())
   fechaCierre   DateTime?
   montoInicial  Decimal   @db.Decimal(10, 2)
   montoFinal    Decimal?  @db.Decimal(10, 2)
   observaciones String?
-  estado        Boolean   @default(true) // True = Abierta
+  estado        Boolean   @default(true)
   
   usuario       Usuario   @relation(fields: [usuarioId], references: [id])
   
@@ -184,31 +184,31 @@ model Gasto {
   descripcion String
   monto       Decimal     @db.Decimal(10, 2)
   fecha       DateTime    @default(now())
-  categoria   String      // "Servicios", "Planilla", "Insumos"
+  categoria   String
   
-  esCosto     Boolean     @default(false) // <--- AGREGADO: Para diferenciar Gasto Operativo de Costo de Venta en el reporte
+  esCosto     Boolean     @default(false)
   
   usuarioId   Int?
   usuario     Usuario?    @relation(fields: [usuarioId], references: [id])
   
-  cajaId      Int?        // Si sale de la caja chica del día
+  cajaId      Int?      
   caja        CajaDiaria? @relation(fields: [cajaId], references: [id])
 }
 
 model Pago {
   id              Int        @id @default(autoincrement())
   pedidoId        Int
-  cajaId          Int        // Todo pago entra a una caja abierta
+  cajaId          Int
   monto           Decimal    @db.Decimal(10, 2)
   metodo          MetodoPago
   fecha           DateTime   @default(now())
   
   comprobanteUrl  String?
-  tipoComprobante String?    // BOLETA, FACTURA, TICKET
+  tipoComprobante String?
   serie           String?
-  numero          String?    // Cambiado a String por si tiene guiones o ceros a la izquierda
+  numero          String?
   sunatEstado     String?
-  codigoOperacion String?    // Para tarjetas/Yape
+  codigoOperacion String?
   
   pedido          Pedido     @relation(fields: [pedidoId], references: [id])
   caja            CajaDiaria @relation(fields: [cajaId], references: [id])
