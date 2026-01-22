@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateCategoriaDto } from './dto/create-categoria.dto';
 import { UpdateCategoriaDto } from './dto/update-categoria.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -8,31 +12,51 @@ export class CategoriasService {
   constructor(private prisma: PrismaService) {}
 
   async create(createCategoriaDto: CreateCategoriaDto) {
-    if (createCategoriaDto.padreId) {
-       const padre = await this.prisma.categoria.findUnique({ where: { id: createCategoriaDto.padreId }});
-       if (!padre) throw new NotFoundException('La categoría padre no existe');
+    const { padreId, orden, nombre } = createCategoriaDto;
+
+    if (padreId) {
+      const padre = await this.prisma.categoria.findUnique({
+        where: { id: padreId },
+      });
+      if (!padre) {
+        throw new NotFoundException('La categoría padre no existe');
+      }
     }
-    
+
+    // calcular orden si no viene
+    let nuevoOrden = orden;
+
+    if (nuevoOrden === undefined) {
+      const last = await this.prisma.categoria.findFirst({
+        where: { padreId: padreId ?? null },
+        orderBy: { orden: 'desc' },
+      });
+
+      nuevoOrden = last ? last.orden + 1 : 0;
+    }
+
     return this.prisma.categoria.create({
-      data: createCategoriaDto,
+      data: {
+        nombre,
+        padreId: padreId ?? null,
+        orden: nuevoOrden,
+      },
     });
   }
 
   async findAll() {
     return this.prisma.categoria.findMany({
-      where: {
-        padreId: null,
-      },
+      where: { padreId: null },
+      orderBy: { orden: 'asc' },
       include: {
         hijos: {
-           orderBy: { nombre: 'asc' },
-           include: {
-              _count: { select: { productos: true } }
-           }
-        }, 
-        _count: { select: { productos: true } }
+          orderBy: { orden: 'asc' },
+          include: {
+            _count: { select: { productos: true } },
+          },
+        },
+        _count: { select: { productos: true } },
       },
-      orderBy: { nombre: 'asc' },
     });
   }
 
@@ -44,7 +68,8 @@ export class CategoriasService {
         productos: true,
       },
     });
-    if (!categoria) throw new NotFoundException(`Categoría #${id} no encontrada`);
+    if (!categoria)
+      throw new NotFoundException(`Categoría #${id} no encontrada`);
     return categoria;
   }
 
@@ -59,15 +84,24 @@ export class CategoriasService {
   async remove(id: number) {
     const categoria = await this.prisma.categoria.findUnique({
       where: { id },
-      include: { productos: true }
+      include: {
+        productos: true,
+        hijos: true,
+      },
     });
 
     if (categoria && categoria.productos.length > 0) {
-      throw new BadRequestException('No se puede eliminar: Esta categoría tiene productos asociados.');
+      throw new BadRequestException(
+        'No se puede eliminar: Esta categoría tiene productos asociados.',
+      );
     }
-
+    if (categoria && categoria.hijos.length > 0) {
+      throw new BadRequestException(
+        'No se puede eliminar: Esta categoría tiene subcategorías asociadas.',
+      );
+    }
     return this.prisma.categoria.delete({
-      where: { id }
+      where: { id },
     });
   }
 }

@@ -40,6 +40,12 @@ const menuItems: MenuItem[] = [
     roles: ['ADMIN']
   },
   { 
+    icon: Layers, 
+    label: 'Categorías', 
+    to: '/categorias', 
+    roles: ['ADMIN'] 
+  },
+  { 
     icon: ShoppingCart, 
     label: 'Punto de Venta', 
     to: '/pos', 
@@ -56,12 +62,6 @@ const menuItems: MenuItem[] = [
     icon: Package, 
     label: 'Productos', 
     to: '/productos', 
-    roles: ['ADMIN'] 
-  },
-  { 
-    icon: Layers, 
-    label: 'Categorías', 
-    to: '/categorias', 
     roles: ['ADMIN'] 
   },
   { 

@@ -1,5 +1,4 @@
 export type Rol = 'ADMIN' | 'MOZO' | 'COCINA' | 'CAJA';
-export type TipoProducto = 'CARTA' | 'MENU' | 'GUARNICION' | 'BEBIDA' | 'EXTRA';
 export type TipoPedido = 'MESA' | 'LLEVAR' | 'DELIVERY';
 export type EstadoPedido = 'PENDIENTE' | 'EN_PROCESO' | 'LISTO' | 'SERVIDO' | 'CERRADO' | 'CANCELADO';
 
@@ -7,6 +6,7 @@ export interface Usuario {
   id: number;
   nombre: string;
   email: string;
+  telefono?: string | null;
   rol: Rol;
   activo: boolean;
   creadoEn: string;
@@ -15,8 +15,11 @@ export interface Usuario {
 export interface Categoria {
   id: number;
   nombre: string;
-  productos?: Producto[];
-  hijos?: Categoria[]; 
+  padreId: number | null;
+  hijos?: Categoria[];
+  _count?: {
+    productos: number;
+  };
 }
 
 export interface Producto {
@@ -27,7 +30,6 @@ export interface Producto {
   controlarStock: boolean;
   stock: number;
   disponibleHoy: boolean;
-  tipo: TipoProducto;
   categoriaId: number;
   imagenUrl?: string;
 }

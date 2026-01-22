@@ -20,6 +20,10 @@ import type { Usuario } from '@/types';
 const usuarioSchema = z.object({
   nombre: z.string().min(3, 'El nombre es muy corto'),
   email: z.string().email('Email inválido'),
+  telefono: z.string()
+    .regex(/^[0-9+()\-\s]{6,20}$/, { message: 'Número inválido' })
+    .optional()
+    .or(z.literal('')),
   password: z.string().min(6, 'Mínimo 6 caracteres').optional().or(z.literal('')), 
   rol: z.enum(['ADMIN', 'MOZO', 'COCINA', 'CAJA']),
 });
@@ -42,6 +46,7 @@ export function UsuarioForm({ userToEdit, onSuccess }: Props) {
     defaultValues: {
       nombre: userToEdit?.nombre || '',
       email: userToEdit?.email || '',
+      telefono: userToEdit?.telefono || '',
       password: '',
       rol: (userToEdit?.rol as any) || 'MOZO',
     },
@@ -97,6 +102,18 @@ export function UsuarioForm({ userToEdit, onSuccess }: Props) {
             <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
           )}
         </div>
+
+        <div className="space-y-2">
+            <Label htmlFor="telefono">Teléfono / Celular</Label>
+            <Input 
+              id="telefono" 
+              placeholder="999 999 999"
+              {...form.register('telefono')} 
+            />
+            {form.formState.errors.telefono && (
+              <p className="text-xs text-destructive">{form.formState.errors.telefono.message}</p>
+            )}
+          </div>
 
         {/* COLUMNA 2, FILA 2: Rol */}
         <div className="space-y-2">

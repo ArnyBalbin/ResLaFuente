@@ -4,20 +4,20 @@ import {
   Pencil, 
   Trash2, 
   User as UserIcon, 
-  RotateCcw, // Icono para restaurar
-  ArchiveX   // Icono para indicar inactivo
+  RotateCcw,
+  ArchiveX,
+  Phone
 } from 'lucide-react';
 import { useUsuarios } from '../hooks/useUsuarios';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge'; // Usaremos Badge para estados
-import { Switch } from '@/components/ui/switch'; // Necesitas este componente de Shadcn
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { UsuarioForm } from './UsuarioForm';
 import type { Usuario } from '@/types';
@@ -27,14 +27,9 @@ export const UsuariosView = () => {
   const { usuarios, isLoading, eliminarUsuario, actualizarUsuario } = useUsuarios();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<Usuario | null>(null);
-  
-  // 1. ESTADO PARA EL FILTRO: ¿Mostramos los eliminados?
+
   const [showInactive, setShowInactive] = useState(false);
 
-  // 2. LÓGICA DE FILTRADO
-  // Primero sacamos a los ADMINS (seguridad)
-  // Luego filtramos por estado: Si showInactive es true, mostramos SOLO los inactivos.
-  // Si es false, mostramos SOLO los activos.
   const personalStaff = usuarios
     .filter(u => u.rol !== 'ADMIN')
     .filter(u => showInactive ? !u.activo : u.activo);
@@ -44,19 +39,25 @@ export const UsuariosView = () => {
     setIsModalOpen(true);
   };
 
-  // 3. FUNCIÓN DE ELIMINAR (SOFT DELETE)
+  const handleCreate = () => {
+    setEditingUser(null);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingUser(null);
+  };
+
   const handleDelete = async (id: number) => {
     if (confirm('¿Estás seguro de desactivar este usuario?')) {
       await eliminarUsuario(id); 
-      // Asumimos que tu hook useUsuarios invalida la query y recarga la lista
     }
   };
 
-  // 4. FUNCIÓN DE RESTAURAR
   const handleRestore = async (id: number) => {
     if (confirm('¿Deseas reactivar este usuario para que pueda acceder al sistema?')) {
       try {
-        // Usamos el mismo endpoint de actualizar pero forzamos activo: true
         await actualizarUsuario({ id, data: { activo: true } });
         toast.success('Usuario restaurado correctamente');
       } catch (error) {
@@ -88,25 +89,21 @@ export const UsuariosView = () => {
             </Label>
           </div>
 
-          <Dialog open={isModalOpen} onOpenChange={(open) => {
-             setIsModalOpen(open);
-             if(!open) setEditingUser(null);
-          }}>
-            <DialogTrigger asChild>
-              {/* Ocultamos el botón de crear si estamos en la papelera para no confundir */}
-              {!showInactive && (
-                <Button className="gap-2 shadow-sm">
-                  <Plus size={18} /> Nuevo Usuario
-                </Button>
-              )}
-            </DialogTrigger>
+          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            {!showInactive && (
+              <Button className="gap-2 shadow-sm" onClick={handleCreate}>
+                <Plus size={18} /> Nuevo Usuario
+              </Button>
+            )}
+            
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>{editingUser ? 'Editar Usuario' : 'Crear Nuevo Usuario'}</DialogTitle>
               </DialogHeader>
+              
               <UsuarioForm 
                 userToEdit={editingUser} 
-                onSuccess={() => setIsModalOpen(false)} 
+                onSuccess={handleCloseModal}
               />
             </DialogContent>
           </Dialog>
@@ -120,6 +117,7 @@ export const UsuariosView = () => {
             <tr>
               <th className="px-6 py-4">Nombre</th>
               <th className="px-6 py-4">Email</th>
+              <th className="px-6 py-4">Contacto</th>
               <th className="px-6 py-4">Rol</th>
               <th className="px-6 py-4">Estado</th>
               <th className="px-6 py-4 text-right">Acciones</th>
@@ -138,6 +136,9 @@ export const UsuariosView = () => {
                   </div>
                 </td>
                 <td className="px-6 py-4 text-muted-foreground">{user.email}</td>
+                <td className="px-6 py-4 text-muted-foreground">
+                  {user.telefono || '-'}
+                </td>
                 <td className="px-6 py-4">
                   <Badge variant="outline" className={`
                     ${user.rol === 'MOZO' ? 'border-blue-200 bg-blue-50 text-blue-700' : ''}

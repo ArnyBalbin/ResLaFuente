@@ -12,4 +12,8 @@ export class CreateCategoriaDto {
   @Type(() => Number)
   padreId?: number;
   
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  orden?: number;
 }

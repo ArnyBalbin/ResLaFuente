@@ -10,6 +10,10 @@ export class UpdateUsuarioDto {
   email?: string;
 
   @IsOptional()
+  @IsString()
+  telefono?: string;
+
+  @IsOptional()
   @MinLength(6)
   password?: string;
 

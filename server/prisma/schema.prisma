@@ -10,6 +10,7 @@ model Usuario {
   id        Int          @id @default(autoincrement())
   nombre    String
   email     String       @unique
+  telefono  String?
   password  String
   rol       Rol          @default(MOZO)
   activo    Boolean      @default(true)
@@ -61,6 +62,7 @@ model Cliente {
 model Categoria {
   id        Int        @id @default(autoincrement())
   nombre    String
+  orden     Int        @default(0)
   padreId   Int?
   padre     Categoria?  @relation("Jerarquia", fields: [padreId], references: [id])
   hijos     Categoria[] @relation("Jerarquia")
@@ -78,22 +80,14 @@ model Producto {
   stock           Int            @default(0)
   disponibleHoy   Boolean        @default(true)
 
-  tipo            TipoProducto   @default(CARTA)
-
+  orden           Int            @default(0)
   imagenUrl       String?
+  
   categoriaId     Int
   categoria       Categoria      @relation(fields: [categoriaId], references: [id])
   
   detallesPedido  DetallePedido[]
   movimientos     MovimientoInventario[]
-}
-
-enum TipoProducto {
-  CARTA
-  MENU
-  GUARNICION
-  BEBIDA
-  EXTRA
 }
 
 model Mesa {

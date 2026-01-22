@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsNotEmpty, IsEnum, MinLength } from 'class-validator';
+import { IsString, IsEmail, IsNotEmpty, IsEnum, MinLength, IsOptional, Matches } from 'class-validator';
 
 enum Rol {
   ADMIN = 'ADMIN',
@@ -21,4 +21,11 @@ export class CreateUsuarioDto {
 
   @IsEnum(Rol, { message: 'El rol debe ser uno de los siguientes: ADMIN, MOZO, COCINA, CAJA' })
   rol: Rol;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^[0-9+()\-\s]{6,20}$/, {
+    message: 'El número de teléfono no es válido',
+  })
+  telefono?: string;
 }

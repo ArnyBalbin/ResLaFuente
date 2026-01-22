@@ -1,6 +1,5 @@
 import { IsBoolean, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-import { TipoProducto } from '@prisma/client';
 
 export class CreateProductoDto {
   @IsString()
@@ -20,9 +19,6 @@ export class CreateProductoDto {
   @IsPositive()
   @Type(() => Number)
   categoriaId: number;
-
-  @IsEnum(TipoProducto, { message: 'El tipo debe ser CARTA, MENU, GUARNICION, BEBIDA o EXTRA' })
-  tipo: TipoProducto;
   
   @IsBoolean()
   @Type(() => Boolean)
