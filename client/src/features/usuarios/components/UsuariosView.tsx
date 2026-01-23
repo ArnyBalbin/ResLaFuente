@@ -5,8 +5,7 @@ import {
   Trash2, 
   User as UserIcon, 
   RotateCcw,
-  ArchiveX,
-  Phone
+  ArchiveX
 } from 'lucide-react';
 import { useUsuarios } from '../hooks/useUsuarios';
 import { Button } from '@/components/ui/button';

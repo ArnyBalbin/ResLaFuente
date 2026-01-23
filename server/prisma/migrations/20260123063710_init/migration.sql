@@ -18,6 +18,7 @@ CREATE TABLE "Usuario" (
     "id" SERIAL NOT NULL,
     "nombre" TEXT NOT NULL,
     "email" TEXT NOT NULL,
+    "telefono" TEXT,
     "password" TEXT NOT NULL,
     "rol" "Rol" NOT NULL DEFAULT 'MOZO',
     "activo" BOOLEAN NOT NULL DEFAULT true,
@@ -59,6 +60,8 @@ CREATE TABLE "Cliente" (
 CREATE TABLE "Categoria" (
     "id" SERIAL NOT NULL,
     "nombre" TEXT NOT NULL,
+    "orden" INTEGER NOT NULL DEFAULT 0,
+    "padreId" INTEGER,
 
     CONSTRAINT "Categoria_pkey" PRIMARY KEY ("id")
 );
@@ -69,12 +72,13 @@ CREATE TABLE "Producto" (
     "nombre" TEXT NOT NULL,
     "descripcion" TEXT,
     "precio" DECIMAL(10,2) NOT NULL,
+    "controlarStock" BOOLEAN NOT NULL DEFAULT false,
     "costo" DECIMAL(10,2) NOT NULL DEFAULT 0,
-    "imagenUrl" TEXT,
-    "categoriaId" INTEGER NOT NULL,
-    "esProductoFinal" BOOLEAN NOT NULL DEFAULT true,
     "stock" INTEGER NOT NULL DEFAULT 0,
     "disponibleHoy" BOOLEAN NOT NULL DEFAULT true,
+    "orden" INTEGER NOT NULL DEFAULT 0,
+    "imagenUrl" TEXT,
+    "categoriaId" INTEGER NOT NULL,
 
     CONSTRAINT "Producto_pkey" PRIMARY KEY ("id")
 );
@@ -114,6 +118,7 @@ CREATE TABLE "DetallePedido" (
     "cantidad" INTEGER NOT NULL,
     "precioUnitario" DECIMAL(10,2) NOT NULL,
     "notas" TEXT,
+    "detallePadreId" INTEGER,
 
     CONSTRAINT "DetallePedido_pkey" PRIMARY KEY ("id")
 );
@@ -193,6 +198,9 @@ CREATE UNIQUE INDEX "Mesa_numero_key" ON "Mesa"("numero");
 ALTER TABLE "Cliente" ADD CONSTRAINT "Cliente_empresaId_fkey" FOREIGN KEY ("empresaId") REFERENCES "Empresa"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Categoria" ADD CONSTRAINT "Categoria_padreId_fkey" FOREIGN KEY ("padreId") REFERENCES "Categoria"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Producto" ADD CONSTRAINT "Producto_categoriaId_fkey" FOREIGN KEY ("categoriaId") REFERENCES "Categoria"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -206,6 +214,9 @@ ALTER TABLE "Pedido" ADD CONSTRAINT "Pedido_mesaId_fkey" FOREIGN KEY ("mesaId") 
 
 -- AddForeignKey
 ALTER TABLE "Pedido" ADD CONSTRAINT "Pedido_empresaId_fkey" FOREIGN KEY ("empresaId") REFERENCES "Empresa"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "DetallePedido" ADD CONSTRAINT "DetallePedido_detallePadreId_fkey" FOREIGN KEY ("detallePadreId") REFERENCES "DetallePedido"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "DetallePedido" ADD CONSTRAINT "DetallePedido_pedidoId_fkey" FOREIGN KEY ("pedidoId") REFERENCES "Pedido"("id") ON DELETE CASCADE ON UPDATE CASCADE;
