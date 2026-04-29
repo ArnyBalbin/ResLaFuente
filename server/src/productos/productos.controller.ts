@@ -16,36 +16,21 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ProductosService } from './productos.service';
 import { CreateProductoDto } from './dto/create-producto.dto';
 import { UpdateProductoDto } from './dto/update-producto.dto';
-import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
 @UseGuards(JwtAuthGuard)
 @Controller('productos')
 export class ProductosController {
-  constructor(
-    private readonly productosService: ProductosService,
-    private readonly cloudinaryService: CloudinaryService,
-  ) {}
+  constructor(private readonly productosService: ProductosService) {}
 
   @Post()
-  @UseInterceptors(FileInterceptor('imagen')) // 'imagen' es el nombre del campo en el Form-Data
-  async create(
+  @UseInterceptors(FileInterceptor('imagen'))
+  create(
     @Body() createProductoDto: CreateProductoDto,
-    @UploadedFile() file: Express.Multer.File, // El archivo llega aquí
+    @UploadedFile() file: Express.Multer.File,
   ) {
-    let imagenUrl = null;
-
-    // Si subieron foto, la mandamos a Cloudinary
-    if (file) {
-      const result = await this.cloudinaryService.uploadImage(file);
-      imagenUrl = result.secure_url;
-    }
-
-    // Inyectamos la URL en el DTO (asegúrate de que tu DTO tenga imagenUrl opcional)
-    return this.productosService.create({
-      ...createProductoDto,
-      imagenUrl: imagenUrl || createProductoDto.imagenUrl, // Prioridad a la subida
-    });
+    // Pasamos el archivo directamente al servicio
+    return this.productosService.create(createProductoDto, file);
   }
 
   @Get()
@@ -68,19 +53,13 @@ export class ProductosController {
 
   @Patch(':id/imagen')
   @UseInterceptors(FileInterceptor('imagen'))
-  async updateImagen(
+  updateImagen(
     @Param('id', ParseIntPipe) id: number,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    if (!file) {
-      throw new BadRequestException('No se envió ninguna imagen');
-    }
-
-    const result = await this.cloudinaryService.uploadImage(file);
-
-    return this.productosService.update(id, {
-      imagenUrl: result.secure_url,
-    });
+    if (!file) throw new BadRequestException('Imagen requerida');
+    // Usamos el método específico del servicio
+    return this.productosService.updateImagen(id, file);
   }
 
   @Patch(':id/toggle')

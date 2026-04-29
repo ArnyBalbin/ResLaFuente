@@ -1,4 +1,4 @@
-import { IsBoolean, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateProductoDto {
@@ -12,7 +12,7 @@ export class CreateProductoDto {
 
   @IsNumber()
   @IsPositive()
-  @Type(() => Number)
+  @Type(() => Number) // Vital para form-data
   precio: number;
 
   @IsInt()
@@ -21,8 +21,9 @@ export class CreateProductoDto {
   categoriaId: number;
   
   @IsBoolean()
-  @Type(() => Boolean)
-  controlarStock: boolean;
+  @IsOptional() // Opcional porque tiene default true en DB
+  @Type(() => Boolean) // Transforma "true"/"false" string a boolean
+  controlarStock?: boolean;
 
   @IsNumber()
   @Min(0)
@@ -41,7 +42,12 @@ export class CreateProductoDto {
   imagenUrl?: string;
   
   @IsBoolean()
-  @IsOptional()
+  @IsOptional() // Opcional, default true
   @Type(() => Boolean)
   disponibleHoy?: boolean;
+
+  @IsInt()
+  @IsOptional()
+  @Type(() => Number)
+  orden?: number; // <--- AQUÍ ESTÁ EL CAMPO QUE FALTABA
 }
