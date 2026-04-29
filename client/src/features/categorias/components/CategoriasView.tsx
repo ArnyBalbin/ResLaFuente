@@ -63,7 +63,7 @@ export const CategoriasView = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Categorías de la Carta</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Categorías</h2>
         </div>
         <Button onClick={handleCreateRoot} className="gap-2">
           <Plus size={18} /> Nueva Categoría

@@ -25,13 +25,22 @@ export interface Categoria {
 export interface Producto {
   id: number;
   nombre: string;
-  descripcion?: string;
+  descripcion?: string | null;
   precio: number;
+
   controlarStock: boolean;
   stock: number;
+  costo: number;
+  
   disponibleHoy: boolean;
+  orden: number;
+  imagenUrl?: string | null;
+
   categoriaId: number;
-  imagenUrl?: string;
+  categoria?: {
+    id: number;
+    nombre: string;
+  };
 }
 
 export interface ItemComanda {

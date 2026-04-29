@@ -52,9 +52,9 @@ export function Header() {
     cocina: 'Cocina',
     usuarios: 'Gestión de Usuarios',
     config: 'Configuración',
-    clientes: 'Clientes',
-    productos: 'Productos',
-    categorias: 'Categorías',
+    clientes: 'Gestión de Clientes',
+    productos: 'Gestión de Productos',
+    categorias: 'Gestión de Categorías',
     reportes: 'Reportes Financieros'
   };
 

@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from './components/ui/sonner';
 import UsuariosPage from './pages/admin/usuarios/UsuariosPage';
 import CategoriasPage from './pages/admin/categorias/CategoriasPage';
+import ProductosPage from './pages/admin/productos/ProductosPage';
 import LoginPage from './pages/auth/LoginPage';
 import HomePage from './pages/dashboard/HomePage';
 import ProfilePage from './pages/dashboard/ProfilePage';
@@ -24,6 +25,7 @@ function App() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/usuarios" element={<UsuariosPage />} />
             <Route path="/categorias" element={<CategoriasPage />} />
+            <Route path="/productos" element={<ProductosPage />} />
             <Route path="/pos" element={<PosPage />} />
           </Route>
 
