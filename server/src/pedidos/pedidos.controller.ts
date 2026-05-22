@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Get } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Get, Query } from '@nestjs/common';
 import { PedidosService } from './pedidos.service';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
@@ -13,9 +13,10 @@ export class PedidosController {
     return this.pedidosService.create(createPedidoDto);
   }
 
-  @Get('cocina')
-  findPedidosCocina() {
-    return this.pedidosService.findPedidosCocina();
+  @Get()
+  findAll(@Query('estados') estados?: string) {
+    // estados vendrá como un string separado por comas, ej: "PENDIENTE,EN_PROCESO"
+    return this.pedidosService.findAll(estados);
   }
   
 }

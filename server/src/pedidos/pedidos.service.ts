@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreatePedidoDto, DetallePedidoItemDto } from './dto/create-pedido.dto';
-import { EstadoPedido } from '@prisma/client';
+import { EstadoPedido, Prisma } from '@prisma/client';
 
 @Injectable()
 export class PedidosService {
@@ -139,44 +139,42 @@ export class PedidosService {
     });
   }
 
-  async findPedidosCocina() {
+  async findAll(estadosString?: string) {
+    // Construimos el objeto de filtrado de Prisma dinámicamente
+    const filtroWhere: Prisma.PedidoWhereInput = {};
+
+    if (estadosString) {
+      // Convertimos "PENDIENTE,EN_PROCESO" en un array ['PENDIENTE', 'EN_PROCESO']
+      const estadosArray = estadosString.split(',') as EstadoPedido[];
+      filtroWhere.estado = { in: estadosArray };
+    }
+
     return this.prisma.pedido.findMany({
-      where: {
-        estado: {
-          in: ['PENDIENTE', 'EN_PROCESO'],
-        },
-      },
+      where: filtroWhere,
       include: {
         mesa: {
-          select: { numero: true } // Solo necesitamos el número de mesa para la comanda
+          select: { numero: true }
+        },
+        usuario: {
+          select: { nombre: true, rol: true } // Util para saber qué mozo tomó el pedido
         },
         detalles: {
           include: {
             producto: {
-              select: { nombre: true } // Nombre del plato
+              select: { nombre: true, precio: true }
             },
             hijos: {
               include: {
-                producto: {
-                  select: { nombre: true } // Para los componentes/combos
-                }
+                producto: { select: { nombre: true } }
               }
             }
           }
         }
       },
       orderBy: {
-        fecha: 'asc', // Los más antiguos primero (FIFO)
+        fecha: 'asc', // Orden cronológico
       },
     });
   }
 
-  // pedidos.service.ts
-  async cambiarEstado(id: number, nuevoEstado: EstadoPedido) {
-    return this.prisma.pedido.update({
-      where: { id },
-      data: { estado: nuevoEstado },
-    });
-  }
-  
 }
