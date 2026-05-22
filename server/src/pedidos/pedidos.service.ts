@@ -20,7 +20,7 @@ export class PedidosService {
       if (!mesa) throw new NotFoundException('La mesa no existe');
       if (mesa.ocupada) throw new ConflictException(`La mesa ${mesa.numero} ya está ocupada`);
     }
-
+    
     const allProductIds = new Set<number>();
     const extractIds = (list: DetallePedidoItemDto[]) => {
       list.forEach(i => {
@@ -138,4 +138,45 @@ export class PedidosService {
       return pedido;
     });
   }
+
+  async findPedidosCocina() {
+    return this.prisma.pedido.findMany({
+      where: {
+        estado: {
+          in: ['PENDIENTE', 'EN_PROCESO'],
+        },
+      },
+      include: {
+        mesa: {
+          select: { numero: true } // Solo necesitamos el número de mesa para la comanda
+        },
+        detalles: {
+          include: {
+            producto: {
+              select: { nombre: true } // Nombre del plato
+            },
+            hijos: {
+              include: {
+                producto: {
+                  select: { nombre: true } // Para los componentes/combos
+                }
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        fecha: 'asc', // Los más antiguos primero (FIFO)
+      },
+    });
+  }
+
+  // pedidos.service.ts
+  async cambiarEstado(id: number, nuevoEstado: EstadoPedido) {
+    return this.prisma.pedido.update({
+      where: { id },
+      data: { estado: nuevoEstado },
+    });
+  }
+  
 }

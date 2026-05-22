@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Get } from '@nestjs/common';
 import { PedidosService } from './pedidos.service';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
@@ -11,6 +11,11 @@ export class PedidosController {
   @Post()
   create(@Body() createPedidoDto: CreatePedidoDto) {
     return this.pedidosService.create(createPedidoDto);
+  }
+
+  @Get('cocina')
+  findPedidosCocina() {
+    return this.pedidosService.findPedidosCocina();
   }
   
 }
