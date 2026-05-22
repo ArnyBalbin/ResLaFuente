@@ -4,11 +4,11 @@ import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsNumber, Min } from 'clas
 export class CreateEmpresaDto {
   @IsString()
   @IsNotEmpty()
-  razonSocial: string;
+  razonSocial!: string;
 
   @IsString()
   @IsNotEmpty()
-  ruc: string;
+  ruc!: string;
 
   @IsString()
   @IsOptional()

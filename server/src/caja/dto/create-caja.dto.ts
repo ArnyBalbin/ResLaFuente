@@ -4,18 +4,18 @@ export class AbrirCajaDto {
   @IsNumber()
   @Min(0)
   @IsNotEmpty()
-  montoInicial: number;
+  montoInicial!: number;
 
   @IsNumber()
   @IsNotEmpty()
-  usuarioId: number;
+  usuarioId!: number;
 }
 
 export class CerrarCajaDto {
   @IsNumber()
   @Min(0)
   @IsNotEmpty()
-  montoFinal: number;
+  montoFinal!: number;
 
   @IsString()
   @IsOptional()

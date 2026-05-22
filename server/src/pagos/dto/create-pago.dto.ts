@@ -3,19 +3,19 @@ import { MetodoPago } from '@prisma/client';
 export class CreatePagoDto {
   @IsNumber()
   @IsNotEmpty()
-  pedidoId: number;
+  pedidoId!: number;
 
   @IsNumber()
   @IsNotEmpty()
-  cajaId: number;
+  cajaId!: number;
 
   @IsEnum(MetodoPago)
   @IsNotEmpty()
-  metodo: MetodoPago;
+  metodo!: MetodoPago;
 
   @IsNumber()
   @IsNotEmpty()
-  monto: number;
+  monto!: number;
 
   @IsString()
   @IsOptional()

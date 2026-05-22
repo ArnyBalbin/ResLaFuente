@@ -4,7 +4,7 @@ import { Type } from 'class-transformer';
 export class CreateProductoDto {
   @IsString()
   @IsNotEmpty()
-  nombre: string;
+  nombre!: string;
 
   @IsString()
   @IsOptional()
@@ -13,12 +13,12 @@ export class CreateProductoDto {
   @IsNumber()
   @IsPositive()
   @Type(() => Number) // Vital para form-data
-  precio: number;
+  precio!: number;
 
   @IsInt()
   @IsPositive()
   @Type(() => Number)
-  categoriaId: number;
+  categoriaId!: number;
   
   @IsBoolean()
   @IsOptional() // Opcional porque tiene default true en DB

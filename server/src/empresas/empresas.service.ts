@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, ConflictException, NotFoundException }
 import { CreateEmpresaDto } from './dto/create-empresa.dto';
 import { UpdateEmpresaDto } from './dto/update-empresa.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client'; // Añadir Prisma aquí
 
 @Injectable()
 export class EmpresasService {
@@ -15,7 +16,7 @@ export class EmpresasService {
           creditoUsado: 0,
         },
       });
-    } catch (error) {
+    } catch (error: any) {
       if (error.code === 'P2002') {
         throw new ConflictException('Ya existe una empresa con ese RUC');
       }

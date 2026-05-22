@@ -4,7 +4,7 @@ import { IsString, IsNotEmpty, IsInt, IsOptional, IsPositive } from 'class-valid
 export class CreateCategoriaDto {
   @IsString()
   @IsNotEmpty({ message: 'El nombre de la categoría es obligatorio' })
-  nombre: string;
+  nombre!: string;
 
   @IsOptional()
   @IsInt()

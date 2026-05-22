@@ -11,20 +11,20 @@ import { Type } from 'class-transformer';
 export class CreateGastoDto {
   @IsString()
   @IsNotEmpty({ message: 'La descripción del gasto es obligatoria' })
-  descripcion: string;
+  descripcion!: string;
 
   @IsNumber()
   @IsPositive({ message: 'El monto debe ser mayor a 0' })
   @Type(() => Number)
-  monto: number;
+  monto!: number;
 
   @IsString()
   @IsNotEmpty()
-  categoria: string; 
+  categoria!: string; 
 
   @IsBoolean()
   @Type(() => Boolean)
-  esCosto: boolean; 
+  esCosto!: boolean; 
 
   @IsString()
   @IsOptional()

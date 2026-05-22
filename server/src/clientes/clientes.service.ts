@@ -19,7 +19,7 @@ export class ClientesService {
       return await this.prisma.cliente.create({
         data: createClienteDto,
       });
-    } catch (error) {
+    } catch (error: any) {
       if (error.code === 'P2002') {
         throw new ConflictException('Ya existe un cliente con ese DNI o Email');
       }

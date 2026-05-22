@@ -15,11 +15,11 @@ import { TipoPedido } from '@prisma/client';
 
 export class DetallePedidoItemDto {
   @IsInt()
-  productoId: number;
+  productoId!: number;
 
   @IsInt()
   @Min(1)
-  cantidad: number;
+  cantidad!: number;
 
   @IsString()
   @IsOptional()
@@ -34,10 +34,10 @@ export class DetallePedidoItemDto {
 
 export class CreatePedidoDto {
   @IsInt()
-  usuarioId: number;
+  usuarioId!: number;
 
   @IsEnum(TipoPedido)
-  tipo: TipoPedido;
+  tipo!: TipoPedido;
 
   @ValidateIf(o => o.tipo === 'MESA')
   @IsInt()
@@ -49,7 +49,7 @@ export class CreatePedidoDto {
   clienteId?: number;
 
   @IsBoolean()
-  esCredito: boolean;
+  esCredito!: boolean;
 
   @ValidateIf(o => o.esCredito === true)
   @IsInt()
@@ -63,5 +63,5 @@ export class CreatePedidoDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => DetallePedidoItemDto)
-  items: DetallePedidoItemDto[];
+  items!: DetallePedidoItemDto[];
 }

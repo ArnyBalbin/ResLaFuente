@@ -3,7 +3,7 @@ import { IsString, IsNotEmpty, IsOptional, IsInt, IsEmail } from 'class-validato
 export class CreateClienteDto {
   @IsString()
   @IsNotEmpty()
-  nombre: string;
+  nombre!: string;
 
   @IsString()
   @IsOptional()

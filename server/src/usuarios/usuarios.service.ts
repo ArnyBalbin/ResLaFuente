@@ -8,7 +8,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 import * as bcrypt from 'bcrypt';
-import { Usuario } from '@prisma/client';
+import { Usuario, Prisma } from '@prisma/client';
 
 @Injectable()
 export class UsuariosService {
@@ -34,9 +34,13 @@ export class UsuariosService {
       return this.excludePassword(usuario);
 
     } catch (error) {
-      if (error.code === 'P2002') {
-        throw new ConflictException('El email ya está registrado en el sistema');
+      // Verificamos si es un error propio de la base de datos (Prisma)
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          throw new ConflictException('El email ya está registrado en el sistema');
+        }
       }
+      // Si no es un P2002 o es otro tipo de error distinto, lanzamos el error general
       throw new InternalServerErrorException('Error inesperado al crear usuario');
     }
   }
@@ -78,10 +82,14 @@ export class UsuariosService {
       return this.excludePassword(usuarioActualizado);
 
     } catch (error) {
-      if (error.code === 'P2002') {
-        throw new ConflictException('El nuevo email ya está en uso por otro usuario');
+      // Verificamos si es un error propio de la base de datos (Prisma)
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          throw new ConflictException('El email ya está registrado en el sistema');
+        }
       }
-      throw new InternalServerErrorException('Error al actualizar usuario');
+      // Si no es un P2002 o es otro tipo de error distinto, lanzamos el error general
+      throw new InternalServerErrorException('Error inesperado al actualizar usuario');
     }
   }
 

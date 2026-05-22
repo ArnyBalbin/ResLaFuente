@@ -4,16 +4,16 @@ import { TipoMovimiento } from '@prisma/client';
 export class CreateInventarioDto {
   @IsInt()
   @IsPositive()
-  productoId: number;
+  productoId!: number;
 
-  @IsEnum(TipoMovimiento, { 
-    message: 'El tipo debe ser ENTRADA, SALIDA o AJUSTE' 
+  @IsEnum(TipoMovimiento, {
+    message: 'El tipo debe ser ENTRADA, SALIDA o AJUSTE'
   })
-  tipo: TipoMovimiento;
+  tipo!: TipoMovimiento;
 
   @IsInt()
   @IsPositive({ message: 'La cantidad debe ser mayor a 0' })
-  cantidad: number;
+  cantidad!: number;
 
   @IsString()
   @IsOptional()

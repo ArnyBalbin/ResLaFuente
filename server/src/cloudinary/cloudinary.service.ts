@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
 import toStream = require('streamifier');
+import 'multer';
 import { UploadApiResponse, UploadApiErrorResponse } from 'cloudinary';
 
 @Injectable()
