@@ -53,7 +53,7 @@ const menuItems: MenuItem[] = [
   },
   { 
     icon: UtensilsCrossed, 
-    label: 'Comandas Cocina', 
+    label: 'Cocina', 
     to: '/cocina', 
     roles: ['ADMIN', 'COCINA'] 
   },
