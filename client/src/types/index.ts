@@ -1,6 +1,7 @@
 export type Rol = 'ADMIN' | 'MOZO' | 'COCINA' | 'CAJA';
 export type TipoPedido = 'MESA' | 'LLEVAR' | 'DELIVERY';
 export type EstadoPedido = 'PENDIENTE' | 'EN_PROCESO' | 'LISTO' | 'SERVIDO' | 'CERRADO' | 'CANCELADO';
+export type TipoArticulo = 'PLATO' | 'PRODUCTO';
 
 export interface Usuario {
   id: number;
@@ -25,7 +26,7 @@ export interface Categoria {
 export interface Producto {
   id: number;
   nombre: string;
-  descripcion?: string | null;
+  tipo: TipoArticulo; // <-- NUEVO
   precio: number;
 
   controlarStock: boolean;
