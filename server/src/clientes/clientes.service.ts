@@ -8,31 +8,49 @@ export class ClientesService {
   constructor(private prisma: PrismaService) {}
 
   async create(createClienteDto: CreateClienteDto) {
-    if (createClienteDto.empresaId) {
+    const { convenioEmpresaId, convenioLimiteDiario, ...datosCliente } = createClienteDto;
+
+    // 1. Validar que la empresa exista si se envió un convenio
+    if (convenioEmpresaId) {
       const empresa = await this.prisma.empresa.findUnique({
-        where: { id: createClienteDto.empresaId }
+        where: { id: convenioEmpresaId }
       });
-      if (!empresa) throw new BadRequestException('La empresa especificada no existe');
+      if (!empresa) throw new BadRequestException('La empresa especificada para el convenio no existe');
+      if (!convenioLimiteDiario) throw new BadRequestException('Debe especificar un límite diario para el convenio');
     }
 
     try {
+      // 2. Crear cliente y su convenio (si aplica) en una sola operación
       return await this.prisma.cliente.create({
-        data: createClienteDto,
+        data: {
+          ...datosCliente,
+          convenios: convenioEmpresaId ? {
+            create: {
+              empresaId: convenioEmpresaId,
+              limiteDiario: convenioLimiteDiario!
+            }
+          } : undefined
+        },
+        include: { convenios: true } // Para devolver el dato completo al frontend
       });
     } catch (error: any) {
       if (error.code === 'P2002') {
-        throw new ConflictException('Ya existe un cliente con ese DNI o Email');
+        throw new ConflictException('Ya existe un cliente con ese DNI, RUC o Email');
       }
       throw error;
     }
   }
 
   async findAll(query?: string) {
+    const includeRelations = { 
+      convenios: { include: { empresa: true } }
+    };
+
     if (!query) {
        return this.prisma.cliente.findMany({ 
          take: 20, 
          orderBy: { id: 'desc' },
-         include: { empresa: true }
+         include: includeRelations
        });
     }
     
@@ -43,14 +61,17 @@ export class ClientesService {
           { dni: { contains: query } }
         ]
       },
-      include: { empresa: true }
+      include: includeRelations
     });
   }
 
   async findOne(id: number) {
     const cliente = await this.prisma.cliente.findUnique({
       where: { id },
-      include: { empresa: true, pedidos: true }
+      include: { 
+        pedidos: true,
+        convenios: { include: { empresa: true } } 
+      }
     });
     if (!cliente) throw new NotFoundException('Cliente no encontrado');
     return cliente;

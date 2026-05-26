@@ -2,13 +2,19 @@
 CREATE TYPE "Rol" AS ENUM ('ADMIN', 'MOZO', 'COCINA', 'CAJA');
 
 -- CreateEnum
+CREATE TYPE "TipoArticulo" AS ENUM ('PLATO', 'PRODUCTO');
+
+-- CreateEnum
 CREATE TYPE "TipoPedido" AS ENUM ('MESA', 'LLEVAR', 'DELIVERY');
 
 -- CreateEnum
 CREATE TYPE "EstadoPedido" AS ENUM ('PENDIENTE', 'EN_PROCESO', 'LISTO', 'SERVIDO', 'CERRADO', 'CANCELADO');
 
 -- CreateEnum
-CREATE TYPE "MetodoPago" AS ENUM ('EFECTIVO', 'YAPE_PLIN', 'TARJETA', 'CREDITO_EMPRESA');
+CREATE TYPE "EstadoPago" AS ENUM ('POR_COBRAR', 'PAGADO_PARCIAL', 'PAGADO');
+
+-- CreateEnum
+CREATE TYPE "MetodoPago" AS ENUM ('EFECTIVO', 'YAPE_PLIN', 'TARJETA', 'CREDITO_EMPRESA', 'CREDITO_PERSONAL');
 
 -- CreateEnum
 CREATE TYPE "TipoMovimiento" AS ENUM ('ENTRADA', 'SALIDA', 'AJUSTE');
@@ -51,9 +57,22 @@ CREATE TABLE "Cliente" (
     "email" TEXT,
     "telefono" TEXT,
     "direccion" TEXT,
-    "empresaId" INTEGER,
+    "tieneCredito" BOOLEAN NOT NULL DEFAULT false,
+    "limiteCredito" DECIMAL(10,2) NOT NULL DEFAULT 0,
+    "saldoDeuda" DECIMAL(10,2) NOT NULL DEFAULT 0,
 
     CONSTRAINT "Cliente_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ConvenioTrabajador" (
+    "id" SERIAL NOT NULL,
+    "clienteId" INTEGER NOT NULL,
+    "empresaId" INTEGER NOT NULL,
+    "limiteDiario" DECIMAL(10,2) NOT NULL,
+    "activo" BOOLEAN NOT NULL DEFAULT true,
+
+    CONSTRAINT "ConvenioTrabajador_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -70,7 +89,7 @@ CREATE TABLE "Categoria" (
 CREATE TABLE "Producto" (
     "id" SERIAL NOT NULL,
     "nombre" TEXT NOT NULL,
-    "descripcion" TEXT,
+    "tipo" "TipoArticulo" NOT NULL DEFAULT 'PLATO',
     "precio" DECIMAL(10,2) NOT NULL,
     "controlarStock" BOOLEAN NOT NULL DEFAULT false,
     "costo" DECIMAL(10,2) NOT NULL DEFAULT 0,
@@ -106,6 +125,7 @@ CREATE TABLE "Pedido" (
     "estado" "EstadoPedido" NOT NULL DEFAULT 'PENDIENTE',
     "total" DECIMAL(10,2) NOT NULL,
     "fecha" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "estadoPago" "EstadoPago" NOT NULL DEFAULT 'POR_COBRAR',
 
     CONSTRAINT "Pedido_pkey" PRIMARY KEY ("id")
 );
@@ -192,10 +212,16 @@ CREATE UNIQUE INDEX "Empresa_ruc_key" ON "Empresa"("ruc");
 CREATE UNIQUE INDEX "Cliente_dni_key" ON "Cliente"("dni");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "ConvenioTrabajador_clienteId_empresaId_key" ON "ConvenioTrabajador"("clienteId", "empresaId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Mesa_numero_key" ON "Mesa"("numero");
 
 -- AddForeignKey
-ALTER TABLE "Cliente" ADD CONSTRAINT "Cliente_empresaId_fkey" FOREIGN KEY ("empresaId") REFERENCES "Empresa"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "ConvenioTrabajador" ADD CONSTRAINT "ConvenioTrabajador_clienteId_fkey" FOREIGN KEY ("clienteId") REFERENCES "Cliente"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ConvenioTrabajador" ADD CONSTRAINT "ConvenioTrabajador_empresaId_fkey" FOREIGN KEY ("empresaId") REFERENCES "Empresa"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Categoria" ADD CONSTRAINT "Categoria_padreId_fkey" FOREIGN KEY ("padreId") REFERENCES "Categoria"("id") ON DELETE SET NULL ON UPDATE CASCADE;

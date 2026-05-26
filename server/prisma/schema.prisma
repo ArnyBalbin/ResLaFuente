@@ -40,7 +40,7 @@ model Empresa {
   creditoUsado   Decimal   @default(0)     @db.Decimal(10, 2)
   diaCierre      Int       @default(30)
   
-  empleados      Cliente[]
+  convenios      ConvenioTrabajador[]
   pedidosCredito Pedido[]
 }
 
@@ -48,15 +48,30 @@ model Cliente {
   id              Int      @id @default(autoincrement())
   nombre          String
   dni             String?  @unique
-  ruc             String?  
+  ruc             String?
   email           String?
   telefono        String?
   direccion       String?
-  
-  empresaId       Int?
-  empresa         Empresa? @relation(fields: [empresaId], references: [id])
+
+  tieneCredito    Boolean  @default(false)
+  limiteCredito   Decimal  @default(0) @db.Decimal(10, 2)
+  saldoDeuda      Decimal  @default(0) @db.Decimal(10, 2)
   
   pedidos         Pedido[]
+  convenios       ConvenioTrabajador[] // Reemplaza al campo empresaId
+}
+
+model ConvenioTrabajador {
+  id              Int      @id @default(autoincrement())
+  clienteId       Int
+  empresaId       Int
+  limiteDiario    Decimal  @db.Decimal(10, 2)
+  activo          Boolean  @default(true)
+
+  cliente         Cliente  @relation(fields: [clienteId], references: [id])
+  empresa         Empresa  @relation(fields: [empresaId], references: [id])
+
+  @@unique([clienteId, empresaId])
 }
 
 model Categoria {
@@ -69,20 +84,27 @@ model Categoria {
   productos Producto[]
 }
 
+enum TipoArticulo {
+  PLATO
+  PRODUCTO
+}
+
 model Producto {
   id              Int            @id @default(autoincrement())
   nombre          String
-  descripcion     String?
+  tipo            TipoArticulo   @default(PLATO) 
+  
   precio          Decimal        @db.Decimal(10, 2)
   
   controlarStock  Boolean        @default(false)
   costo           Decimal        @default(0) @db.Decimal(10, 2)
   stock           Int            @default(0)
+  
+  // --- SOLO PARA PLATOS (Menú, carta, etc) ---
   disponibleHoy   Boolean        @default(true)
 
   orden           Int            @default(0)
   imagenUrl       String?
-  
   categoriaId     Int
   categoria       Categoria      @relation(fields: [categoriaId], references: [id])
   
@@ -124,6 +146,8 @@ model Pedido {
   
   detalles  DetallePedido[]
   pagos     Pago[]
+
+  estadoPago      EstadoPago @default(POR_COBRAR)
 }
 
 enum TipoPedido {
@@ -139,6 +163,12 @@ enum EstadoPedido {
   SERVIDO
   CERRADO
   CANCELADO
+}
+
+enum EstadoPago {
+  POR_COBRAR
+  PAGADO_PARCIAL
+  PAGADO
 }
 
 model DetallePedido {
@@ -213,6 +243,7 @@ enum MetodoPago {
   YAPE_PLIN
   TARJETA
   CREDITO_EMPRESA
+  CREDITO_PERSONAL
 }
 
 model MovimientoInventario {

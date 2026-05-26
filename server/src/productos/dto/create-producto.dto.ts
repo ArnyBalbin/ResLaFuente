@@ -1,18 +1,19 @@
-import { IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
+import { TipoArticulo } from '@prisma/client';
 
 export class CreateProductoDto {
   @IsString()
   @IsNotEmpty()
   nombre!: string;
 
-  @IsString()
-  @IsOptional()
-  descripcion?: string;
+  @IsEnum(TipoArticulo)
+  @IsNotEmpty()
+  tipo!: TipoArticulo; // El frontend dirá si es PLATO o PRODUCTO
 
   @IsNumber()
-  @IsPositive()
-  @Type(() => Number) // Vital para form-data
+  @Min(0) // <-- EL CAMBIO ESTÁ AQUÍ. Antes decía @IsPositive()
+  @Type(() => Number)
   precio!: number;
 
   @IsInt()
@@ -21,8 +22,8 @@ export class CreateProductoDto {
   categoriaId!: number;
   
   @IsBoolean()
-  @IsOptional() // Opcional porque tiene default true en DB
-  @Type(() => Boolean) // Transforma "true"/"false" string a boolean
+  @IsOptional()
+  @Type(() => Boolean)
   controlarStock?: boolean;
 
   @IsNumber()
@@ -42,12 +43,12 @@ export class CreateProductoDto {
   imagenUrl?: string;
   
   @IsBoolean()
-  @IsOptional() // Opcional, default true
+  @IsOptional()
   @Type(() => Boolean)
   disponibleHoy?: boolean;
 
   @IsInt()
   @IsOptional()
   @Type(() => Number)
-  orden?: number; // <--- AQUÍ ESTÁ EL CAMPO QUE FALTABA
+  orden?: number; 
 }

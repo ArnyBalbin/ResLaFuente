@@ -1,4 +1,5 @@
-import { IsString, IsNotEmpty, IsOptional, IsInt, IsEmail } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsInt, IsEmail, IsBoolean, IsNumber, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateClienteDto {
   @IsString()
@@ -25,7 +26,24 @@ export class CreateClienteDto {
   @IsOptional()
   direccion?: string;
 
+  @IsBoolean()
+  @IsOptional()
+  tieneCredito?: boolean;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  @Type(() => Number)
+  limiteCredito?: number;
+
   @IsInt()
   @IsOptional()
-  empresaId?: number;
+  @Type(() => Number)
+  convenioEmpresaId?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  @Type(() => Number)
+  convenioLimiteDiario?: number;
 }

@@ -1,7 +1,6 @@
 import { Type } from 'class-transformer';
 import { 
   IsArray, 
-  IsBoolean, 
   IsEnum, 
   IsInt, 
   IsNotEmpty, 
@@ -9,9 +8,10 @@ import {
   IsString, 
   ValidateNested, 
   Min,
-  ValidateIf
+  ValidateIf,
+  IsNumber
 } from 'class-validator';
-import { TipoPedido } from '@prisma/client';
+import { TipoPedido, MetodoPago } from '@prisma/client';
 
 export class DetallePedidoItemDto {
   @IsInt()
@@ -32,6 +32,19 @@ export class DetallePedidoItemDto {
   componentes?: DetallePedidoItemDto[]; 
 }
 
+export class PagoPedidoDto {
+  @IsEnum(MetodoPago)
+  metodo!: MetodoPago;
+
+  @IsNumber()
+  @Min(0.01)
+  monto!: number;
+
+  @IsInt()
+  @IsOptional()
+  cajaId?: number;
+}
+
 export class CreatePedidoDto {
   @IsInt()
   usuarioId!: number;
@@ -46,15 +59,7 @@ export class CreatePedidoDto {
 
   @IsInt()
   @IsOptional()
-  clienteId?: number;
-
-  @IsBoolean()
-  esCredito!: boolean;
-
-  @ValidateIf(o => o.esCredito === true)
-  @IsInt()
-  @IsNotEmpty({ message: 'Si es venta a crédito, debe especificar la empresa' })
-  empresaId?: number;
+  clienteId?: number; // Obligatorio si hay pagos al crédito
 
   @IsString()
   @IsOptional()
@@ -64,4 +69,11 @@ export class CreatePedidoDto {
   @ValidateNested({ each: true })
   @Type(() => DetallePedidoItemDto)
   items!: DetallePedidoItemDto[];
+
+  // NUEVO: Array de pagos
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => PagoPedidoDto)
+  pagos?: PagoPedidoDto[];
 }

@@ -18,6 +18,7 @@ import { ReportesModule } from './reportes/reportes.module';
 import { AuthModule } from './auth/auth.module';
 import { GastosModule } from './gastos/gastos.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
+import { ConveniosModule } from './convenios/convenios.module';
 
 @Module({
   imports: [
@@ -25,7 +26,7 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
       rootPath: join(process.cwd(), 'uploads'),
       serveRoot: '/uploads',
     }),
-    PrismaModule, ProductosModule, CategoriasModule, MesasModule, PedidosModule, UsuariosModule, EmpresasModule, ClientesModule, CajaModule, PagosModule, InventarioModule, ReportesModule, AuthModule, GastosModule, CloudinaryModule],
+    PrismaModule, ProductosModule, CategoriasModule, MesasModule, PedidosModule, UsuariosModule, EmpresasModule, ClientesModule, CajaModule, PagosModule, InventarioModule, ReportesModule, AuthModule, GastosModule, CloudinaryModule, ConveniosModule],
   controllers: [AppController],
   providers: [AppService],
 })
