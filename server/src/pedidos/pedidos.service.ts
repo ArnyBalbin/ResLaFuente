@@ -1,234 +1,188 @@
-import { 
-  Injectable, 
-  BadRequestException, 
-  NotFoundException, 
-  ConflictException 
-} from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { CreatePedidoDto, DetallePedidoItemDto } from './dto/create-pedido.dto';
-import { EstadoPedido, EstadoPago, MetodoPago, Prisma } from '@prisma/client';
+import { Injectable, NotFoundException, ConflictException, Logger, BadRequestException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreatePedidoDto } from './dtos/create-pedido.dto';
+import { UpdateEstadoPedidoDto } from './dtos/update-estado-pedido.dto';
+import { AnularPedidoDto } from './dtos/anular-pedido.dto';
+import { EstadoPedido, TipoPedido, Prisma } from '@prisma/client';
 
 @Injectable()
-export class PedidosService {
-  constructor(private prisma: PrismaService) {}
+export class PedidoService {
+  private readonly logger = new Logger(PedidoService.name);
 
-  async create(createPedidoDto: CreatePedidoDto) {
-    const { items, mesaId, clienteId, pagos, ...datosPedido } = createPedidoDto;
+  constructor(private readonly prisma: PrismaService) {}
 
-    // 1. Validar Mesa
-    if (mesaId) {
-      const mesa = await this.prisma.mesa.findUnique({ where: { id: mesaId } });
-      if (!mesa) throw new NotFoundException('La mesa no existe');
-      if (mesa.ocupada) throw new ConflictException(`La mesa ${mesa.numero} ya está ocupada`);
+  async create(dto: CreatePedidoDto, sucursalId: string, usuarioId: string) {
+    // 1. Validaciones de Negocio Estrictas
+    if (dto.clienteId && dto.convenioId) {
+      throw new BadRequestException('Un pedido no puede pertenecer a un cliente personal y a un convenio B2B simultáneamente.');
     }
-    
-    // 2. Extraer IDs de productos para validar stock y precios
-    const allProductIds = new Set<number>();
-    const extractIds = (list: DetallePedidoItemDto[]) => {
-      list.forEach(i => {
-        allProductIds.add(i.productoId);
-        if (i.componentes) extractIds(i.componentes);
-      });
-    };
-    extractIds(items);
 
-    const productosDb = await this.prisma.producto.findMany({
-      where: { id: { in: Array.from(allProductIds) } }
-    });
+    if (dto.tipo === TipoPedido.MESA && (!dto.mesasIds || dto.mesasIds.length === 0)) {
+      throw new BadRequestException('Para pedidos de salón (MESA), debe especificar al menos una mesa.');
+    }
 
-    const productoMap = new Map(productosDb.map(p => [p.id, p]));
-    let totalCalculado = 0;
+    if (dto.tipo === TipoPedido.DELIVERY && !dto.direccion) {
+      throw new BadRequestException('Los pedidos de DELIVERY requieren una dirección de entrega.');
+    }
 
-    // 3. Iniciar Transacción
-    return this.prisma.$transaction(async (tx) => {
+    // 2. Cálculo inmutable del Total (Backend Authority)
+    const totalCalculado = dto.detalles.reduce((acc, det) => {
+      return acc + (det.cantidad * det.precioUnitario);
+    }, 0);
+
+    // 3. Ejecución Transaccional (ACID)
+    return this.prisma.extended.$transaction(async (tx) => {
       
-      // A. Crear Cabecera del Pedido
+      // A. Validar mesas si es necesario
+      if (dto.mesasIds && dto.mesasIds.length > 0) {
+        const mesasCount = await tx.mesa.count({
+          where: { id: { in: dto.mesasIds }, sucursalId }
+        });
+        if (mesasCount !== dto.mesasIds.length) {
+          throw new ConflictException('Una o más mesas especificadas no existen en esta sucursal.');
+        }
+      }
+
+      // B. Crear cabecera del pedido
       const pedido = await tx.pedido.create({
         data: {
-          ...datosPedido,
-          mesaId,
-          clienteId,
-          total: 0, 
+          sucursalId,
+          usuarioId,
+          clienteId: dto.clienteId,
+          convenioId: dto.convenioId,
+          tipo: dto.tipo,
+          direccion: dto.direccion,
+          total: totalCalculado, // Guardamos el total calculado, no confiamos ciegamente en el front
           estado: EstadoPedido.PENDIENTE,
-          estadoPago: EstadoPago.POR_COBRAR // Por defecto
-        }
+        },
       });
 
-      // B. Procesar Items e Inventario
-      const procesarItem = async (item: DetallePedidoItemDto, padreId?: number) => {
-        const producto = productoMap.get(item.productoId);
-        if (!producto) throw new BadRequestException(`Producto ID ${item.productoId} no existe`);
+      // C. Asociar mesas (Fusión de mesas soportada)
+      if (dto.mesasIds && dto.mesasIds.length > 0) {
+        const mesasData = dto.mesasIds.map(mesaId => ({
+          pedidoId: pedido.id,
+          mesaId,
+        }));
+        await tx.pedidoMesa.createMany({ data: mesasData });
 
-        if (producto.controlarStock) {
-          if (producto.stock < item.cantidad) {
-            throw new BadRequestException(`Stock insuficiente para ${producto.nombre}`);
-          }
-          await tx.producto.update({
-            where: { id: producto.id },
-            data: { stock: { decrement: item.cantidad } }
-          });
-          await tx.movimientoInventario.create({
-            data: {
-              productoId: producto.id,
-              tipo: 'SALIDA',
-              cantidad: item.cantidad,
-              motivo: `Venta Pedido #${pedido.id}`,
-              costoUnitario: producto.costo
-            }
-          });
-        }
-
-        const subtotal = Number(producto.precio) * item.cantidad;
-        totalCalculado += subtotal;
-
-        const detalle = await tx.detallePedido.create({
-          data: {
-            pedidoId: pedido.id,
-            productoId: item.productoId,
-            cantidad: item.cantidad,
-            precioUnitario: producto.precio,
-            notas: item.notas,
-            detallePadreId: padreId
-          }
-        });
-
-        if (item.componentes && item.componentes.length > 0) {
-          for (const hijo of item.componentes) {
-            await procesarItem(hijo, detalle.id);
-          }
-        }
-      };
-
-      for (const item of items) {
-        await procesarItem(item);
-      }
-
-      // C. Procesar Pagos Mixtos y Créditos
-      let sumaPagos = 0;
-
-      if (pagos && pagos.length > 0) {
-        for (const pago of pagos) {
-          sumaPagos += pago.monto;
-
-          // Si hay algún tipo de crédito, el cliente debe estar identificado
-          if ((pago.metodo === MetodoPago.CREDITO_EMPRESA || pago.metodo === MetodoPago.CREDITO_PERSONAL) && !clienteId) {
-            throw new BadRequestException('Debe especificar un clienteId para registrar pagos a crédito.');
-          }
-
-          // Lógica: Crédito de Empresa (El convenio)
-          if (pago.metodo === MetodoPago.CREDITO_EMPRESA) {
-            const convenio = await tx.convenioTrabajador.findFirst({
-              where: { clienteId: clienteId!, activo: true },
-              include: { empresa: true }
-            });
-
-            if (!convenio) throw new BadRequestException('El cliente no tiene un convenio activo con ninguna empresa.');
-            
-            // Validar si el monto excede el límite diario o el saldo general de la empresa
-            if (pago.monto > Number(convenio.limiteDiario)) {
-              throw new BadRequestException(`El pago excede el límite diario del convenio (S/ ${convenio.limiteDiario}).`);
-            }
-
-            const saldoDisponibleEmpresa = Number(convenio.empresa.limiteCredito) - Number(convenio.empresa.creditoUsado);
-            if (pago.monto > saldoDisponibleEmpresa) {
-              throw new BadRequestException('La empresa ha superado su límite de crédito global.');
-            }
-
-            // Sumar deuda a la empresa
-            await tx.empresa.update({
-              where: { id: convenio.empresaId },
-              data: { creditoUsado: { increment: pago.monto } }
-            });
-          }
-
-          // Lógica: Crédito Personal (Fiado directo al cliente)
-          if (pago.metodo === MetodoPago.CREDITO_PERSONAL) {
-            const cliente = await tx.cliente.findUnique({ where: { id: clienteId! } });
-            if (!cliente?.tieneCredito) throw new BadRequestException('Este cliente no tiene autorización para crédito personal.');
-            
-            const saldoDisponiblePersonal = Number(cliente.limiteCredito) - Number(cliente.saldoDeuda);
-            if (pago.monto > saldoDisponiblePersonal) {
-              throw new BadRequestException('El cliente ha superado su límite de crédito personal.');
-            }
-
-            // Sumar deuda personal al cliente
-            await tx.cliente.update({
-              where: { id: clienteId! },
-              data: { saldoDeuda: { increment: pago.monto } }
-            });
-          }
-
-          // Registrar el pago en la base de datos
-          await tx.pago.create({
-            data: {
-              pedidoId: pedido.id,
-              cajaId: pago.cajaId || 1, // Asume caja 1 por defecto si no se envía
-              monto: pago.monto,
-              metodo: pago.metodo
-            }
-          });
-        }
-      }
-
-      // D. Determinar el Estado de Pago del Pedido
-      // D. Determinar el Estado de Pago del Pedido
-      
-      // Añade ": EstadoPago" justo después del nombre de la variable
-      let estadoPagoFinal: EstadoPago = EstadoPago.POR_COBRAR; 
-      
-      // Usamos una pequeña tolerancia por problemas de decimales en JS
-      if (sumaPagos >= totalCalculado - 0.01) {
-        estadoPagoFinal = EstadoPago.PAGADO;
-      } else if (sumaPagos > 0) {
-        estadoPagoFinal = EstadoPago.PAGADO_PARCIAL;
-      }
-
-      // E. Actualizar el pedido con el total final y su estado de pago
-      const pedidoActualizado = await tx.pedido.update({
-        where: { id: pedido.id },
-        data: { 
-          total: totalCalculado,
-          estadoPago: estadoPagoFinal 
-        }
-      });
-
-      // F. Marcar mesa como ocupada
-      if (mesaId) {
-        await tx.mesa.update({
-          where: { id: mesaId },
-          data: { ocupada: true }
+        // Marcar mesas como ocupadas
+        await tx.mesa.updateMany({
+          where: { id: { in: dto.mesasIds } },
+          data: { ocupada: true },
         });
       }
 
-      return pedidoActualizado;
+      // D. Insertar Detalles
+      const detallesData = dto.detalles.map(det => ({
+        pedidoId: pedido.id,
+        productoId: det.productoId,
+        menuId: det.menuId,
+        cantidad: det.cantidad,
+        precioUnitario: det.precioUnitario,
+        notas: det.notas,
+      }));
+      await tx.detallePedido.createMany({ data: detallesData });
+
+      return pedido;
     });
   }
 
-  async findAll(estadosString?: string) {
-    const filtroWhere: Prisma.PedidoWhereInput = {};
+  async findAll(sucursalId: string, queryFilters?: { estado?: EstadoPedido; tipo?: TipoPedido; fecha?: string }) {
+    const where: Prisma.PedidoWhereInput = { sucursalId };
 
-    if (estadosString) {
-      const estadosArray = estadosString.split(',') as EstadoPedido[];
-      filtroWhere.estado = { in: estadosArray };
+    if (queryFilters?.estado) where.estado = queryFilters.estado;
+    if (queryFilters?.tipo) where.tipo = queryFilters.tipo;
+    
+    // Si envían fecha, buscamos los pedidos de ese día exacto
+    if (queryFilters?.fecha) {
+      const inicioDia = new Date(queryFilters.fecha);
+      inicioDia.setHours(0, 0, 0, 0);
+      const finDia = new Date(queryFilters.fecha);
+      finDia.setHours(23, 59, 59, 999);
+      where.fecha = { gte: inicioDia, lte: finDia };
     }
 
-    return this.prisma.pedido.findMany({
-      where: filtroWhere,
+    return this.prisma.extended.pedido.findMany({
+      where,
       include: {
-        mesa: { select: { numero: true } },
+        usuario: { select: { nombre: true } },
+        mesas: { include: { mesa: { select: { numero: true, salon: true } } } },
+      },
+      orderBy: { fecha: 'desc' },
+    });
+  }
+
+  async findOne(id: string, sucursalId: string) {
+    const pedido = await this.prisma.extended.pedido.findFirst({
+      where: { id, sucursalId },
+      include: {
         usuario: { select: { nombre: true, rol: true } },
-        cliente: { select: { nombre: true, telefono: true } }, // Incluimos al cliente
-        pagos: true, // Incluimos los pagos para ver cómo se pagó
+        cliente: true,
+        convenio: { include: { empresa: true, cliente: true } },
+        mesas: { include: { mesa: true } },
         detalles: {
           include: {
-            producto: { select: { nombre: true, precio: true } },
-            hijos: {
-              include: { producto: { select: { nombre: true } } }
-            }
+            producto: { select: { nombre: true, areaDespacho: true } },
+            menu: { select: { nombre: true } }
           }
-        }
+        },
+        pagos: true,
       },
-      orderBy: { fecha: 'asc' },
+    });
+
+    if (!pedido) {
+      throw new NotFoundException(`El pedido especificado no existe o no pertenece a esta sucursal.`);
+    }
+
+    return pedido;
+  }
+
+  async updateEstado(id: string, dto: UpdateEstadoPedidoDto, sucursalId: string) {
+    const pedido = await this.findOne(id, sucursalId);
+
+    if (pedido.estado === EstadoPedido.CANCELADO || pedido.estado === EstadoPedido.CERRADO) {
+      throw new ConflictException(`No se puede modificar el estado de un pedido que ya está ${pedido.estado}.`);
+    }
+
+    return this.prisma.extended.pedido.update({
+      where: { id },
+      data: { estado: dto.estado },
+    });
+  }
+
+  async anularPedido(id: string, dto: AnularPedidoDto, sucursalId: string, usuarioAdminId: string) {
+    this.logger.log(`Anulación de pedido solicitada. Pedido: ${id}, Admin: ${usuarioAdminId}`);
+    const pedido = await this.findOne(id, sucursalId);
+
+    if (pedido.estado === EstadoPedido.CERRADO) {
+      throw new ConflictException('Un pedido cerrado y cobrado no puede ser anulado mediante este flujo. Requiere extorno de pago.');
+    }
+
+    return this.prisma.extended.$transaction(async (tx) => {
+      // 1. Marcar como cancelado y guardar el motivo
+      const pedidoCancelado = await tx.pedido.update({
+        where: { id },
+        data: { 
+          estado: EstadoPedido.CANCELADO,
+          motivoAnulacion: dto.motivoAnulacion,
+        },
+      });
+
+      // 2. Liberar las mesas asociadas a este pedido
+      const mesasAsociadas = await tx.pedidoMesa.findMany({
+        where: { pedidoId: id },
+        select: { mesaId: true }
+      });
+
+      if (mesasAsociadas.length > 0) {
+        const idsMesas = mesasAsociadas.map(m => m.mesaId);
+        await tx.mesa.updateMany({
+          where: { id: { in: idsMesas } },
+          data: { ocupada: false },
+        });
+      }
+
+      return pedidoCancelado;
     });
   }
 }

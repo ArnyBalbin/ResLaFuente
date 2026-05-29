@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { UsuariosService } from './usuarios.service';
-import { UsuariosController } from './usuarios.controller';
+import { UsuarioService } from './usuarios.service';
+import { UsuarioController } from './usuarios.controller';
 
 @Module({
-  controllers: [UsuariosController],
-  providers: [UsuariosService],
-  exports: [UsuariosService],
+  controllers: [UsuarioController],
+  providers: [UsuarioService],
+  exports: [UsuarioService], // Exportamos por si el AuthModule necesita inyectarlo directamente a futuro
 })
 export class UsuariosModule {}

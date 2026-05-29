@@ -1,36 +1,40 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { Pool } from 'pg';
+import { softDeleteExtension } from './prisma.extension';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-    private readonly logger = new Logger('PrismaService');
+  private readonly logger = new Logger(PrismaService.name);
+  private _extendedClient: ReturnType<typeof softDeleteExtension>;
 
-    constructor() {
-        const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-        const adapter = new PrismaPg(pool);
-        super({ adapter });
-    }
+  constructor() {
+    const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+    
+    super({
+      adapter,
+      log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    });
 
-    async onModuleInit() {
-        try {
-            this.logger.log('Connecting to the database...');
-            await this.$connect();
-            this.logger.log('Connected to the database.');
-        } catch (error) {
-            this.logger.error('Failed to connect to the database:', error);
-            throw error;
-        }
-    }
+    this._extendedClient = softDeleteExtension(this);
+  }
 
-    async onModuleDestroy() {
-        try {
-            this.logger.log('Disconnecting from the database...');
-            await this.$disconnect();
-            this.logger.log('Disconnected from the database.');
-        } catch (error) {
-            this.logger.error('Failed to disconnect from the database:', error);
-        }
+  async onModuleInit() {
+    try {
+      await this.$connect();
+      this.logger.log('Conexión a PostgreSQL establecida exitosamente.');
+    } catch (error) {
+      this.logger.error('Error crítico conectando a la base de datos', error);
+      process.exit(1);
     }
+  }
+
+  async onModuleDestroy() {
+    await this.$disconnect();
+    this.logger.log('Conexión a PostgreSQL cerrada.');
+  }
+
+  get extended() {
+    return this._extendedClient;
+  }
 }

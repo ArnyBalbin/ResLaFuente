@@ -1,79 +1,106 @@
-import { Injectable, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
-import { CreateEmpresaDto } from './dto/create-empresa.dto';
-import { UpdateEmpresaDto } from './dto/update-empresa.dto';
+import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateEmpresaDto } from './dtos/create-empresa.dto';
+import { UpdateEmpresaDto } from './dtos/update-empresa.dto';
 
 @Injectable()
-export class EmpresasService {
-  constructor(private prisma: PrismaService) {}
+export class EmpresaService {
+  private readonly logger = new Logger(EmpresaService.name);
 
-  async create(createEmpresaDto: CreateEmpresaDto) {
-    try {
-      return await this.prisma.empresa.create({
-        data: {
-          ...createEmpresaDto,
-          creditoUsado: 0,
-        },
-      });
-    } catch (error: any) {
-      if (error.code === 'P2002') {
-        throw new ConflictException('Ya existe una empresa con ese RUC');
-      }
-      throw error;
+  constructor(private readonly prisma: PrismaService) {}
+
+  async create(dto: CreateEmpresaDto) {
+    // Si la base de datos detecta un RUC duplicado, el PrismaClientExceptionFilter
+    // lanzará automáticamente el error HTTP 409 Conflict.
+    return this.prisma.extended.empresa.create({
+      data: dto,
+    });
+  }
+
+  async findAll(queryFilters?: { buscar?: string; conCredito?: boolean }) {
+    const where: any = {};
+
+    if (queryFilters?.buscar) {
+      where.OR = [
+        { razonSocial: { contains: queryFilters.buscar, mode: 'insensitive' } },
+        { ruc: { contains: queryFilters.buscar } },
+      ];
     }
-  }
 
-  async findAll() {
-    return this.prisma.empresa.findMany({
+    if (queryFilters?.conCredito !== undefined) {
+      where.tieneCredito = queryFilters.conCredito;
+    }
+
+    return this.prisma.extended.empresa.findMany({
+      where,
       orderBy: { razonSocial: 'asc' },
-      // CORREGIDO: Ahora contamos convenios activos
-      include: { _count: { select: { convenios: true } } }
     });
   }
 
-  async findOne(id: number) {
-    const empresa = await this.prisma.empresa.findUnique({
+  async findOne(id: string) {
+    const empresa = await this.prisma.extended.empresa.findUnique({
       where: { id },
-      // CORREGIDO: Traemos los trabajadores a través de sus convenios
-      include: { convenios: { include: { cliente: true } } }
+      include: {
+        // Traemos cuántos convenios activos tiene esta empresa sin traer toda la data
+        _count: {
+          select: { convenios: { where: { activo: true } } }
+        }
+      }
     });
-    if (!empresa) throw new NotFoundException('Empresa no encontrada');
+
+    if (!empresa) {
+      throw new NotFoundException(`La empresa corporativa no se encuentra registrada.`);
+    }
+
     return empresa;
   }
 
-  update(id: number, updateEmpresaDto: UpdateEmpresaDto) {
-    return this.prisma.empresa.update({
-      where: { id },
-      data: updateEmpresaDto,
-    });
-  }
+  async update(id: string, dto: UpdateEmpresaDto) {
+    const empresa = await this.findOne(id);
 
-  async remove(id: number) {
-    const empresa = await this.prisma.empresa.findUnique({
-      where: { id },
-      include: { convenios: true, pedidosCredito: true }
-    });
-
-    // CORREGIDO: Validación de integridad histórica con convenios
-    if (empresa && (empresa.convenios.length > 0 || empresa.pedidosCredito.length > 0)) {
-      throw new BadRequestException('No se puede eliminar: La empresa tiene convenios asignados o historial de crédito.');
+    // Regla de Negocio Crítica: Bloquear reducción de límite por debajo del uso actual
+    if (dto.limiteCredito !== undefined && dto.limiteCredito < Number(empresa.creditoUsado)) {
+      throw new ConflictException(
+        `El nuevo límite (S/ ${dto.limiteCredito}) no puede ser menor al crédito ya utilizado (S/ ${empresa.creditoUsado}).`
+      );
     }
 
-    return this.prisma.empresa.delete({ where: { id } }); // Asegúrate si tu modelo compila con empresa o enterprise según tu renombre interno
+    // Regla de Negocio Crítica: Bloquear revocación de crédito si hay deuda
+    if (dto.tieneCredito === false && Number(empresa.creditoUsado) > 0) {
+      throw new ConflictException(
+        `No se puede revocar el crédito. La empresa mantiene una deuda activa de S/ ${empresa.creditoUsado}.`
+      );
+    }
+
+    return this.prisma.extended.empresa.update({
+      where: { id },
+      data: dto,
+    });
   }
 
-  async amortizarDeuda(id: number, monto: number) {
+  async remove(id: string) {
+    this.logger.log(`Validando eliminación de Empresa ID: ${id}`);
     const empresa = await this.findOne(id);
-    const deudaActual = Number(empresa.creditoUsado);
 
-    if (monto <= 0) throw new BadRequestException('El monto a pagar debe ser positivo');
-    if (monto > deudaActual) throw new BadRequestException('No puedes pagar más de lo que deben');
+    // 1. Proteger deudas
+    if (Number(empresa.creditoUsado) > 0) {
+      throw new ConflictException(
+        `Operación denegada. La empresa tiene un saldo corporativo pendiente de S/ ${empresa.creditoUsado}.`
+      );
+    }
 
-    return this.prisma.empresa.update({
+    // 2. Proteger dependencias (Convenios)
+    if (empresa._count.convenios > 0) {
+      throw new ConflictException(
+        `La empresa '${empresa.razonSocial}' tiene ${empresa._count.convenios} convenio(s) de trabajadores activos. Debe desactivarlos primero.`
+      );
+    }
+
+    // Soft Delete (Manejado por Prisma Extension)
+    await this.prisma.extended.empresa.delete({
       where: { id },
-      data: {
-        creditoUsado: { decrement: monto }
-      }
     });
+
+    return { message: 'Empresa eliminada exitosamente del directorio.' };
   }
 }

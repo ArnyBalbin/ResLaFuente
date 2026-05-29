@@ -14,11 +14,12 @@ import { ClientesModule } from './clientes/clientes.module';
 import { CajaModule } from './caja/caja.module';
 import { PagosModule } from './pagos/pagos.module';
 import { InventarioModule } from './inventario/inventario.module';
-import { ReportesModule } from './reportes/reportes.module';
 import { AuthModule } from './auth/auth.module';
 import { GastosModule } from './gastos/gastos.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { ConveniosModule } from './convenios/convenios.module';
+import { MenusModule } from './menus/menus.module';
+import { SucursalModule } from './sucursal/sucursal.module';
 
 @Module({
   imports: [
@@ -26,7 +27,10 @@ import { ConveniosModule } from './convenios/convenios.module';
       rootPath: join(process.cwd(), 'uploads'),
       serveRoot: '/uploads',
     }),
-    PrismaModule, ProductosModule, CategoriasModule, MesasModule, PedidosModule, UsuariosModule, EmpresasModule, ClientesModule, CajaModule, PagosModule, InventarioModule, ReportesModule, AuthModule, GastosModule, CloudinaryModule, ConveniosModule],
+    PrismaModule, ProductosModule, CategoriasModule, MesasModule, 
+    PedidosModule, UsuariosModule, EmpresasModule, ClientesModule, 
+    CajaModule, PagosModule, InventarioModule, AuthModule, GastosModule, 
+    CloudinaryModule, ConveniosModule, MenusModule, SucursalModule],
   controllers: [AppController],
   providers: [AppService],
 })

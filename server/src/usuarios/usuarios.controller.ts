@@ -1,55 +1,70 @@
 import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Patch, 
-  Param, 
-  Delete, 
-  ParseIntPipe,
-  UseGuards
+  Controller, Get, Post, Body, Patch, Param, Delete, 
+  UseGuards, ParseUUIDPipe, HttpCode, HttpStatus 
 } from '@nestjs/common';
-import { UsuariosService } from './usuarios.service';
-import { CreateUsuarioDto } from './dto/create-usuario.dto';
-import { UpdateUsuarioDto } from './dto/update-usuario.dto';
-import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { UsuarioService } from './usuarios.service';
+import { CreateUsuarioDto } from './dtos/create-usuario.dto';
+import { UpdateUsuarioDto } from './dtos/update-usuario.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
+@ApiTags('Usuarios y Personal')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('usuarios')
-export class UsuariosController {
-  constructor(private readonly usuariosService: UsuariosService) {}
+export class UsuarioController {
+  constructor(private readonly usuarioService: UsuarioService) {}
 
   @Post()
-  create(@Body() createUsuarioDto: CreateUsuarioDto) {
-    return this.usuariosService.create(createUsuarioDto);
+  @Roles('ADMIN') // Solo el administrador local puede crear empleados
+  @ApiOperation({ summary: 'Registrar un nuevo colaborador en la sucursal actual' })
+  @ApiResponse({ status: 201, description: 'Usuario creado exitosamente (sin credenciales expuestas)' })
+  create(
+    @Body() createUsuarioDto: CreateUsuarioDto,
+    @CurrentUser('sucursalId') sucursalId: string,
+  ) {
+    return this.usuarioService.create(createUsuarioDto, sucursalId);
   }
 
-  @UseGuards(JwtAuthGuard) 
   @Get()
-  findAll() {
-    return this.usuariosService.findAll();
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Listar todos los colaboradores de la sucursal actual' })
+  findAll(@CurrentUser('sucursalId') sucursalId: string) {
+    return this.usuarioService.findAll(sucursalId);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.usuariosService.findOne(id);
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Obtener el detalle de un colaborador' })
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('sucursalId') sucursalId: string,
+  ) {
+    return this.usuarioService.findOne(id, sucursalId);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() updateUsuarioDto: UpdateUsuarioDto) {
-    return this.usuariosService.update(id, updateUsuarioDto);
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Actualizar datos de un colaborador (incluyendo reset de PIN/Password)' })
+  update(
+    @Param('id', ParseUUIDPipe) id: string, 
+    @Body() updateUsuarioDto: UpdateUsuarioDto,
+    @CurrentUser('sucursalId') sucursalId: string,
+  ) {
+    return this.usuarioService.update(id, updateUsuarioDto, sucursalId);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.usuariosService.remove(id);
-  }
-  
-  @UseGuards(JwtAuthGuard)
-  @Patch(':id/restore')
-  restore(@Param('id', ParseIntPipe) id: number) {
-    return this.usuariosService.restore(id);
+  @Roles('ADMIN')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Dar de baja a un colaborador (Soft Delete)' })
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('sucursalId') sucursalId: string,
+  ) {
+    return this.usuarioService.remove(id, sucursalId);
   }
 }

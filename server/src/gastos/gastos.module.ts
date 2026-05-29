@@ -1,9 +1,12 @@
 import { Module } from '@nestjs/common';
-import { GastosService } from './gastos.service';
-import { GastosController } from './gastos.controller';
+import { GastoService } from './services/gastos.service';
+import { CategoriaGastoService } from './services/categoria-gasto.service';
+import { GastoController } from './controllers/gastos.controller';
+import { CategoriaGastoController } from './controllers/categoria-gasto.controller';
 
 @Module({
-  controllers: [GastosController],
-  providers: [GastosService],
+  controllers: [CategoriaGastoController, GastoController],
+  providers: [CategoriaGastoService, GastoService],
+  exports: [GastoService],
 })
 export class GastosModule {}

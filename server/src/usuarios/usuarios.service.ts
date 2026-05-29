@@ -1,120 +1,92 @@
-import { 
-  Injectable, 
-  NotFoundException, 
-  ConflictException, 
-  InternalServerErrorException 
-} from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateUsuarioDto } from './dto/create-usuario.dto';
-import { UpdateUsuarioDto } from './dto/update-usuario.dto';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateUsuarioDto } from './dtos/create-usuario.dto';
+import { UpdateUsuarioDto } from './dtos/update-usuario.dto';
 import * as bcrypt from 'bcrypt';
-import { Usuario, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
-export class UsuariosService {
-  constructor(private prisma: PrismaService) {}
+export class UsuarioService {
+  private readonly logger = new Logger(UsuarioService.name);
+  private readonly SALT_ROUNDS = 10;
 
-  private excludePassword(usuario: Usuario): Omit<Usuario, 'password'> {
-    const { password, ...rest } = usuario;
-    return rest;
-  }
+  private readonly selectPublico: Prisma.UsuarioSelect = {
+    id: true,
+    sucursalId: true,
+    nombre: true,
+    email: true,
+    telefono: true,
+    rol: true,
+    activo: true,
+    creadoEn: true,
+  };
 
-  async create(createUsuarioDto: CreateUsuarioDto) {
-    try {
-      const { password, ...userData } = createUsuarioDto;
-      const hashedPassword = await bcrypt.hash(password, 10);
+  constructor(private readonly prisma: PrismaService) {}
 
-      const usuario = await this.prisma.usuario.create({
-        data: {
-          ...userData,
-          password: hashedPassword,
-        },
-      });
+  async create(dto: CreateUsuarioDto, sucursalId: string) {
+    this.logger.log(`Creando usuario ${dto.email} para la sucursal ${sucursalId}`);
 
-      return this.excludePassword(usuario);
+    const hashedPassword = await bcrypt.hash(dto.password, this.SALT_ROUNDS);
 
-    } catch (error) {
-      // Verificamos si es un error propio de la base de datos (Prisma)
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new ConflictException('El email ya está registrado en el sistema');
-        }
-      }
-      // Si no es un P2002 o es otro tipo de error distinto, lanzamos el error general
-      throw new InternalServerErrorException('Error inesperado al crear usuario');
-    }
-  }
-
-  async findAll() {
-    const usuarios = await this.prisma.usuario.findMany({
-      orderBy: { id: 'asc' },
+    return this.prisma.extended.usuario.create({
+      data: {
+        ...dto,
+        password: hashedPassword,
+        sucursalId, 
+      },
+      select: this.selectPublico,
     });
-    return usuarios.map(u => this.excludePassword(u));
   }
 
-  async findOne(id: number) {
-    const usuario = await this.prisma.usuario.findUnique({
-      where: { id },
+  async findAll(sucursalId: string) {
+    // El tenant isolation garantiza que solo veas empleados de TU local
+    return this.prisma.extended.usuario.findMany({
+      where: { sucursalId },
+      select: this.selectPublico,
+      orderBy: { creadoEn: 'desc' },
+    });
+  }
+
+  async findOne(id: string, sucursalId: string) {
+    const usuario = await this.prisma.extended.usuario.findFirst({
+      where: { id, sucursalId }, // Tenant isolation
+      select: this.selectPublico,
     });
 
     if (!usuario) {
-      throw new NotFoundException(`El usuario con ID ${id} no existe`);
+      throw new NotFoundException(`Usuario no encontrado en esta sucursal`);
     }
 
-    return this.excludePassword(usuario);
+    return usuario;
   }
 
-  async update(id: number, updateUsuarioDto: UpdateUsuarioDto) {
-    await this.findOne(id); 
+  async update(id: string, dto: UpdateUsuarioDto, sucursalId: string) {
+    await this.findOne(id, sucursalId); // Validar existencia y pertenencia
 
-    const { password, ...restData } = updateUsuarioDto;
-    let dataToUpdate: any = { ...restData };
+    const updateData: any = { ...dto };
 
-    if (password) {
-      dataToUpdate.password = await bcrypt.hash(password, 10);
+    // Si envían una nueva contraseña, la hasheamos antes de guardarla
+    if (dto.password) {
+      updateData.password = await bcrypt.hash(dto.password, this.SALT_ROUNDS);
     }
 
-    try {
-      const usuarioActualizado = await this.prisma.usuario.update({
-        where: { id },
-        data: dataToUpdate,
-      });
-      return this.excludePassword(usuarioActualizado);
-
-    } catch (error) {
-      // Verificamos si es un error propio de la base de datos (Prisma)
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new ConflictException('El email ya está registrado en el sistema');
-        }
-      }
-      // Si no es un P2002 o es otro tipo de error distinto, lanzamos el error general
-      throw new InternalServerErrorException('Error inesperado al actualizar usuario');
-    }
-  }
-
-  async remove(id: number) {
-    await this.findOne(id);
-
-    const usuarioDesactivado = await this.prisma.usuario.update({
+    return this.prisma.extended.usuario.update({
       where: { id },
-      data: { activo: false },
+      data: updateData,
+      select: this.selectPublico,
     });
-
-    return this.excludePassword(usuarioDesactivado);
   }
-  
-  async restore(id: number) {
-     await this.prisma.usuario.update({
+
+  async remove(id: string, sucursalId: string) {
+    this.logger.log(`Soft delete de usuario ID: ${id} en sucursal ${sucursalId}`);
+    await this.findOne(id, sucursalId);
+
+    // El PrismaClientExceptionFilter y el softDeleteExtension 
+    // interceptarán este delete y lo volverán un update(eliminadoEn: new Date())
+    await this.prisma.extended.usuario.delete({
       where: { id },
-      data: { activo: true },
     });
-    return { message: `Usuario ${id} reactivado correctamente` };
-  }
 
-  async findOneByEmail(email: string) {
-    return this.prisma.usuario.findUnique({
-      where: { email },
-    });
+    return { message: 'Usuario eliminado correctamente' };
   }
 }

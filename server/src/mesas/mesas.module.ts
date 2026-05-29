@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
-import { MesasService } from './mesas.service';
-import { MesasController } from './mesas.controller';
+import { MesaService } from './mesas.service';
+import { MesaController } from './mesas.controller';
 
 @Module({
-  controllers: [MesasController],
-  providers: [MesasService],
+  controllers: [MesaController],
+  providers: [MesaService],
+  exports: [MesaService],
 })
 export class MesasModule {}

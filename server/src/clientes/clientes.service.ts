@@ -1,104 +1,111 @@
-import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
-import { CreateClienteDto } from './dto/create-cliente.dto';
-import { UpdateClienteDto } from './dto/update-cliente.dto';
+import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateClienteDto } from './dtos/create-cliente.dto';
+import { UpdateClienteDto } from './dtos/update-cliente.dto';
 
 @Injectable()
-export class ClientesService {
-  constructor(private prisma: PrismaService) {}
+export class ClienteService {
+  private readonly logger = new Logger(ClienteService.name);
 
-  async create(createClienteDto: CreateClienteDto) {
-    const { convenioEmpresaId, convenioLimiteDiario, ...datosCliente } = createClienteDto;
+  constructor(private readonly prisma: PrismaService) {}
 
-    // 1. Validar que la empresa exista si se envió un convenio
-    if (convenioEmpresaId) {
-      const empresa = await this.prisma.empresa.findUnique({
-        where: { id: convenioEmpresaId }
-      });
-      if (!empresa) throw new BadRequestException('La empresa especificada para el convenio no existe');
-      if (!convenioLimiteDiario) throw new BadRequestException('Debe especificar un límite diario para el convenio');
-    }
-
-    try {
-      // 2. Crear cliente y su convenio (si aplica) en una sola operación
-      return await this.prisma.cliente.create({
-        data: {
-          ...datosCliente,
-          convenios: convenioEmpresaId ? {
-            create: {
-              empresaId: convenioEmpresaId,
-              limiteDiario: convenioLimiteDiario!
-            }
-          } : undefined
-        },
-        include: { convenios: true } // Para devolver el dato completo al frontend
-      });
-    } catch (error: any) {
-      if (error.code === 'P2002') {
-        throw new ConflictException('Ya existe un cliente con ese DNI, RUC o Email');
-      }
-      throw error;
-    }
-  }
-
-  async findAll(query?: string) {
-    const includeRelations = { 
-      convenios: { include: { empresa: true } }
-    };
-
-    if (!query) {
-       return this.prisma.cliente.findMany({ 
-         take: 20, 
-         orderBy: { id: 'desc' },
-         include: includeRelations
-       });
-    }
-    
-    return this.prisma.cliente.findMany({
-      where: {
-        OR: [
-          { nombre: { contains: query, mode: 'insensitive' } },
-          { dni: { contains: query } }
-        ]
-      },
-      include: includeRelations
+  async create(dto: CreateClienteDto) {
+    // El PrismaClientExceptionFilter manejará automáticamente los DNI/RUC duplicados
+    return this.prisma.extended.cliente.create({
+      data: dto,
     });
   }
 
-  async findOne(id: number) {
-    const cliente = await this.prisma.cliente.findUnique({
+  async findAll(queryFilters?: { buscar?: string; conCredito?: boolean; conDeuda?: boolean }) {
+    const where: any = {};
+
+    if (queryFilters?.buscar) {
+      where.OR = [
+        { nombre: { contains: queryFilters.buscar, mode: 'insensitive' } },
+        { dni: { contains: queryFilters.buscar } },
+        { ruc: { contains: queryFilters.buscar } },
+      ];
+    }
+
+    if (queryFilters?.conCredito !== undefined) {
+      where.tieneCredito = queryFilters.conCredito;
+    }
+
+    if (queryFilters?.conDeuda) {
+      where.saldoDeuda = { gt: 0 };
+    }
+
+    return this.prisma.extended.cliente.findMany({
+      where,
+      orderBy: { nombre: 'asc' },
+    });
+  }
+
+  async findOne(id: string) {
+    const cliente = await this.prisma.extended.cliente.findUnique({
       where: { id },
-      include: { 
-        pedidos: true,
-        convenios: { include: { empresa: true } } 
-      }
     });
-    if (!cliente) throw new NotFoundException('Cliente no encontrado');
+
+    if (!cliente) {
+      throw new NotFoundException(`Cliente no encontrado en el sistema`);
+    }
+
     return cliente;
   }
 
-  async update(id: number, updateClienteDto: UpdateClienteDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdateClienteDto) {
+    await this.findOne(id); // Validar existencia
 
-    if (updateClienteDto.dni) {
-      const existe = await this.prisma.cliente.findUnique({
-        where: { dni: updateClienteDto.dni }
-      });
-      if (existe && existe.id !== id) {
-        throw new BadRequestException('Ya existe otro cliente con este DNI');
+    // Prevenir inconsistencias crediticias: 
+    // No se puede quitar la línea de crédito si el cliente aún tiene deuda.
+    if (dto.tieneCredito === false) {
+      const cliente = await this.findOne(id);
+      if (Number(cliente.saldoDeuda) > 0) {
+        throw new ConflictException(
+          `No se puede revocar el crédito. El cliente mantiene una deuda activa de S/ ${cliente.saldoDeuda}.`
+        );
       }
     }
 
-    return this.prisma.cliente.update({
+    return this.prisma.extended.cliente.update({
       where: { id },
-      data: updateClienteDto
+      data: dto,
     });
   }
 
-  async remove(id: number) {
-    await this.findOne(id);
-    return this.prisma.cliente.delete({
-      where: { id }
+  async remove(id: string) {
+    this.logger.log(`Validando eliminación de cliente ID: ${id}`);
+    const cliente = await this.findOne(id);
+
+    // Regla de Negocio 1: No eliminar clientes con cuentas por cobrar
+    if (Number(cliente.saldoDeuda) > 0) {
+      throw new ConflictException(
+        `Operación denegada. El cliente tiene un saldo pendiente de pago de S/ ${cliente.saldoDeuda}.`
+      );
+    }
+
+    // Regla de Negocio 2: Integridad del historial de facturación
+    const count = await this.prisma.extended.cliente.findFirst({
+      where: { id },
+      select: {
+        _count: {
+          select: { pedidos: true, convenios: true }
+        }
+      }
     });
+
+    const totalPedidos = count?._count?.pedidos ?? 0;
+
+    if (totalPedidos > 0) {
+      throw new ConflictException(
+        `El cliente '${cliente.nombre}' tiene facturas/comandas históricas registradas. Por normativas de auditoría, no puede ser eliminado.`
+      );
+    }
+
+    await this.prisma.extended.cliente.delete({
+      where: { id },
+    });
+
+    return { message: 'Cliente eliminado exitosamente' };
   }
 }

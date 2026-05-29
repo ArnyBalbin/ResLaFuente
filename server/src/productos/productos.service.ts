@@ -1,115 +1,146 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { CreateProductoDto } from './dto/create-producto.dto';
-import { UpdateProductoDto } from './dto/update-producto.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { CloudinaryService } from 'src/cloudinary/cloudinary.service'; // Importamos aquí
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateProductoDto } from './dtos/create-producto.dto';
+import { UpdateProductoDto } from './dtos/update-producto.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
-export class ProductosService {
+export class ProductoService {
+  private readonly logger = new Logger(ProductoService.name);
+
   constructor(
-    private prisma: PrismaService,
-    private cloudinary: CloudinaryService, // Inyectamos aquí
+    private readonly prisma: PrismaService,
+    private readonly cloudinaryService: CloudinaryService, // <--- Inyectar servicio
   ) {}
 
-  async create(createProductoDto: CreateProductoDto, file?: Express.Multer.File) {
-    // 1. Validar Categoría
-    const categoria = await this.prisma.categoria.findUnique({
-      where: { id: createProductoDto.categoriaId },
-    });
-    if (!categoria) {
-      throw new BadRequestException('La categoría no existe');
-    }
+  async create(dto: CreateProductoDto, sucursalId: string) {
+    // 1. Validar que la categoría exista y pertenezca a la misma sucursal
+    await this.validarCategoria(dto.categoriaId, sucursalId);
 
-    // 2. Lógica de Stock
-    if (!createProductoDto.controlarStock) {
-      createProductoDto.stock = 0;
-      createProductoDto.costo = 0;
-    }
-
-    // 3. Subir Imagen (Si existe)
-    if (file) {
-      const result = await this.cloudinary.uploadImage(file);
-      createProductoDto.imagenUrl = result.secure_url;
-    }
-
-    // 4. Guardar
-    return this.prisma.producto.create({
-      data: createProductoDto,
+    // 2. Creación segura mapeando los campos
+    return this.prisma.extended.producto.create({
+      data: {
+        ...dto,
+        sucursalId,
+      },
     });
   }
 
-  async findAll() {
-    return this.prisma.producto.findMany({
-      include: { categoria: true },
-      // --- CORRECCIÓN SENIOR: ORDEN MULTINIVEL ---
-      orderBy: [
-        { categoria: { nombre: 'asc' } }, // 1. Agrupar por nombre de categoría
-        { orden: 'asc' },                 // 2. Respetar el orden manual
-        { nombre: 'asc' },                // 3. Alfabético por si acaso
-      ],
+  async findAll(sucursalId: string, queryFilters?: { categoriaId?: string; disponibleHoy?: boolean }) {
+    const where: Prisma.ProductoWhereInput = { sucursalId };
+
+    if (queryFilters?.categoriaId) {
+      where.categoriaId = queryFilters.categoriaId;
+    }
+
+    if (queryFilters?.disponibleHoy !== undefined) {
+      where.disponibleHoy = queryFilters.disponibleHoy;
+    }
+
+    return this.prisma.extended.producto.findMany({
+      where,
+      include: {
+        categoria: { select: { nombre: true } }
+      },
+      orderBy: { nombre: 'asc' },
     });
   }
 
-  async findOne(id: number) {
-    const producto = await this.prisma.producto.findUnique({
-      where: { id },
-      include: { categoria: true },
+  async findOne(id: string, sucursalId: string) {
+    const producto = await this.prisma.extended.producto.findFirst({
+      where: { id, sucursalId },
+      include: {
+        categoria: true,
+      },
     });
-    if (!producto) throw new NotFoundException(`Producto #${id} no encontrado`);
+
+    if (!producto) {
+      throw new NotFoundException(`El producto no existe en el catálogo de esta sucursal`);
+    }
+
     return producto;
   }
 
-  // Actualización de datos (Texto)
-  async update(id: number, updateProductoDto: UpdateProductoDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdateProductoDto, sucursalId: string) {
+    // Validar existencia
+    await this.findOne(id, sucursalId);
 
-    if (updateProductoDto.controlarStock === false) {
-      updateProductoDto.stock = 0;
-      updateProductoDto.costo = 0;
+    // Si intenta cambiar la categoría, validar la nueva
+    if (dto.categoriaId) {
+      await this.validarCategoria(dto.categoriaId, sucursalId);
     }
 
-    return this.prisma.producto.update({
+    return this.prisma.extended.producto.update({
       where: { id },
-      data: updateProductoDto,
+      data: dto,
     });
   }
 
-  // Actualización exclusiva de Imagen
-  async updateImagen(id: number, file: Express.Multer.File) {
-    const producto = await this.findOne(id); // Verificamos que exista
+  async remove(id: string, sucursalId: string) {
+    this.logger.log(`Intentando eliminar producto ID: ${id}`);
+    const producto = await this.findOne(id, sucursalId);
 
-    const result = await this.cloudinary.uploadImage(file);
-
-    return this.prisma.producto.update({
+    // Regla Enterprise: No permitir el borrado si hay comandas históricas
+    const count = await this.prisma.extended.producto.findFirst({
       where: { id },
-      data: { imagenUrl: result.secure_url },
+      select: {
+        _count: {
+          select: { detallesPedido: true, movimientos: true }
+        }
+      }
     });
-  }
 
-  async toggleDisponibilidad(id: number) {
-    const producto = await this.findOne(id);
-    return this.prisma.producto.update({
-      where: { id },
-      data: { disponibleHoy: !producto.disponibleHoy },
-    });
-  }
+    const totalDetalles = count?._count?.detallesPedido ?? 0;
+    const totalMovimientos = count?._count?.movimientos ?? 0;
 
-  async remove(id: number) {
-    // --- ESTO ESTÁ EXCELENTE ---
-    // Protege la integridad histórica de tus ventas
-    const enPedidos = await this.prisma.detallePedido.findFirst({
-      where: { productoId: id },
-    });
-    if (enPedidos) {
-      throw new BadRequestException(
-        'No se puede eliminar: Este producto está en pedidos históricos. Mejor desactívalo (Toggle).',
+    if (totalDetalles > 0 || totalMovimientos > 0) {
+      throw new ConflictException(
+        `El producto '${producto.nombre}' ya tiene un historial de ventas o movimientos de inventario. No se puede eliminar. Para ocultarlo, cambie 'disponibleHoy' a false.`
       );
     }
 
-    return this.prisma.producto.delete({ where: { id } });
+    // Se aplica el Soft Delete de la extensión Prisma
+    await this.prisma.extended.producto.delete({
+      where: { id },
+    });
+
+    return { message: 'Producto eliminado del catálogo' };
+  }
+
+  // --- Validación Auxiliar ---
+  private async validarCategoria(categoriaId: string, sucursalId: string) {
+    const categoria = await this.prisma.extended.categoria.findFirst({
+      where: { id: categoriaId, sucursalId },
+    });
+
+    if (!categoria) {
+      throw new ConflictException('La categoría asignada no es válida o pertenece a otra sucursal');
+    }
+  }
+
+  async subirImagen(id: string, sucursalId: string, file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('No se ha proporcionado ningún archivo de imagen.');
+    }
+
+    // 1. Validar que el producto exista y pertenezca a la sucursal actual
+    await this.findOne(id, sucursalId);
+
+    try {
+      // 2. Subir imagen a Cloudinary usando tu servicio existente
+      const uploadResult = await this.cloudinaryService.uploadImage(file);
+
+      // 3. Actualizar la URL segura en la base de datos
+      return await this.prisma.extended.producto.update({
+        where: { id },
+        data: { imagenUrl: uploadResult.secure_url },
+      });
+      
+    } catch (error) {
+      this.logger.error('Error al subir imagen a Cloudinary', error);
+      throw new BadRequestException('Hubo un problema al procesar la imagen con Cloudinary.');
+    }
   }
 }

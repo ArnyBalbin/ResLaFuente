@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
-import { ConveniosService } from './convenios.service';
-import { ConveniosController } from './convenios.controller';
+import { ConvenioTrabajadorService } from './convenios.service';
+import { ConvenioTrabajadorController } from './convenios.controller';
 
 @Module({
-  controllers: [ConveniosController],
-  providers: [ConveniosService],
+  controllers: [ConvenioTrabajadorController],
+  providers: [ConvenioTrabajadorService],
+  exports: [ConvenioTrabajadorService],
 })
 export class ConveniosModule {}

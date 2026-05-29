@@ -6,19 +6,48 @@ datasource db {
   provider = "postgresql"
 }
 
-model Usuario {
-  id        Int          @id @default(autoincrement())
-  nombre    String
-  email     String       @unique
-  telefono  String?
-  password  String
-  rol       Rol          @default(MOZO)
-  activo    Boolean      @default(true)
-  creadoEn  DateTime     @default(now())
+// ==========================================
+// 1. NÚCLEO MULTI-TENANT Y SEGURIDAD
+// ==========================================
 
-  pedidos   Pedido[]
-  cajas     CajaDiaria[]
-  gastos    Gasto[]
+model Sucursal {
+  id          String       @id @default(uuid())
+  nombre      String
+  direccion   String?
+  activa      Boolean      @default(true)
+  creadoEn    DateTime     @default(now())
+  actualizado DateTime     @updatedAt
+
+  usuarios    Usuario[]
+  mesas       Mesa[]
+  pedidos     Pedido[]
+  cajas       CajaDiaria[]
+  productos   Producto[]
+  categorias  Categoria[]
+  gastos      Gasto[]
+}
+
+model Usuario {
+  id          String       @id @default(uuid())
+  sucursalId  String
+  sucursal    Sucursal     @relation(fields: [sucursalId], references: [id])
+  
+  nombre      String
+  email       String       @unique
+  telefono    String?      // Campo de contacto mantenido según requerimiento
+  password    String       
+  pinAcceso   String       @db.VarChar(4) // Autenticación rápida en terminal POS
+  
+  rol         Rol          @default(MOZO)
+  activo      Boolean      @default(true)
+  
+  creadoEn    DateTime     @default(now())
+  actualizado DateTime     @updatedAt
+  eliminadoEn DateTime?    // Soft delete
+
+  pedidos     Pedido[]
+  cajas       CajaDiaria[]
+  gastos      Gasto[]
 }
 
 enum Rol {
@@ -28,60 +57,87 @@ enum Rol {
   CAJA
 }
 
+// ==========================================
+// 2. DOMINIO DE CLIENTES Y CONVENIOS
+// ==========================================
+
 model Empresa {
-  id             Int       @id @default(autoincrement())
+  id             String               @id @default(uuid())
   razonSocial    String
-  ruc            String    @unique
+  ruc            String               @unique
   direccion      String?
   telefono       String?
   
-  tieneCredito   Boolean   @default(false)
-  limiteCredito  Decimal   @default(0)     @db.Decimal(10, 2)
-  creditoUsado   Decimal   @default(0)     @db.Decimal(10, 2)
-  diaCierre      Int       @default(30)
+  tieneCredito   Boolean              @default(false)
+  limiteCredito  Decimal              @default(0) @db.Decimal(10, 2)
+  creditoUsado   Decimal              @default(0) @db.Decimal(10, 2)
+  diaCierre      Int                  @default(30)
   
+  creadoEn       DateTime             @default(now())
+  actualizado    DateTime             @updatedAt
+  eliminadoEn    DateTime?
+
   convenios      ConvenioTrabajador[]
-  pedidosCredito Pedido[]
 }
 
 model Cliente {
-  id              Int      @id @default(autoincrement())
-  nombre          String
-  dni             String?  @unique
-  ruc             String?
-  email           String?
-  telefono        String?
-  direccion       String?
-
-  tieneCredito    Boolean  @default(false)
-  limiteCredito   Decimal  @default(0) @db.Decimal(10, 2)
-  saldoDeuda      Decimal  @default(0) @db.Decimal(10, 2)
+  id             String               @id @default(uuid())
+  nombre         String
+  dni            String?              @unique
+  ruc            String?              
+  email          String?
+  telefono       String?
+  direccion      String?
   
-  pedidos         Pedido[]
-  convenios       ConvenioTrabajador[] // Reemplaza al campo empresaId
+  tieneCredito   Boolean              @default(false)
+  limiteCredito  Decimal              @default(0) @db.Decimal(10, 2)
+  saldoDeuda     Decimal              @default(0) @db.Decimal(10, 2)
+  
+  creadoEn       DateTime             @default(now())
+  actualizado    DateTime             @updatedAt
+  eliminadoEn    DateTime?
+
+  pedidos        Pedido[]
+  convenios      ConvenioTrabajador[] 
 }
 
 model ConvenioTrabajador {
-  id              Int      @id @default(autoincrement())
-  clienteId       Int
-  empresaId       Int
-  limiteDiario    Decimal  @db.Decimal(10, 2)
-  activo          Boolean  @default(true)
+  id             String    @id @default(uuid())
+  clienteId      String
+  empresaId      String
+  limiteDiario   Decimal   @db.Decimal(10, 2)
+  activo         Boolean   @default(true)
 
-  cliente         Cliente  @relation(fields: [clienteId], references: [id])
-  empresa         Empresa  @relation(fields: [empresaId], references: [id])
+  creadoEn       DateTime  @default(now())
+  actualizado    DateTime  @updatedAt
+
+  cliente        Cliente   @relation(fields: [clienteId], references: [id])
+  empresa        Empresa   @relation(fields: [empresaId], references: [id])
+  pedidos        Pedido[]  // Pedidos asociados a este convenio específico
 
   @@unique([clienteId, empresaId])
 }
 
+// ==========================================
+// 3. CATÁLOGO, MENÚ E INVENTARIO
+// ==========================================
+
 model Categoria {
-  id        Int        @id @default(autoincrement())
-  nombre    String
-  orden     Int        @default(0)
-  padreId   Int?
-  padre     Categoria?  @relation("Jerarquia", fields: [padreId], references: [id])
-  hijos     Categoria[] @relation("Jerarquia")
-  productos Producto[]
+  id          String      @id @default(uuid())
+  sucursalId  String
+  sucursal    Sucursal    @relation(fields: [sucursalId], references: [id])
+  nombre      String
+  orden       Int         @default(0)
+  
+  padreId     String?
+  padre       Categoria?  @relation("Jerarquia", fields: [padreId], references: [id])
+  hijos       Categoria[] @relation("Jerarquia")
+  
+  creadoEn    DateTime    @default(now())
+  actualizado DateTime    @updatedAt
+  eliminadoEn DateTime?
+
+  productos   Producto[]
 }
 
 enum TipoArticulo {
@@ -89,65 +145,130 @@ enum TipoArticulo {
   PRODUCTO
 }
 
-model Producto {
-  id              Int            @id @default(autoincrement())
-  nombre          String
-  tipo            TipoArticulo   @default(PLATO) 
-  
-  precio          Decimal        @db.Decimal(10, 2)
-  
-  controlarStock  Boolean        @default(false)
-  costo           Decimal        @default(0) @db.Decimal(10, 2)
-  stock           Int            @default(0)
-  
-  // --- SOLO PARA PLATOS (Menú, carta, etc) ---
-  disponibleHoy   Boolean        @default(true)
-
-  orden           Int            @default(0)
-  imagenUrl       String?
-  categoriaId     Int
-  categoria       Categoria      @relation(fields: [categoriaId], references: [id])
-  
-  detallesPedido  DetallePedido[]
-  movimientos     MovimientoInventario[]
+enum AreaDespacho {
+  COCINA
+  BARRA
 }
 
-model Mesa {
-  id        Int      @id @default(autoincrement())
-  numero    String   @unique
-  capacidad Int      @default(4)
-  ocupada   Boolean  @default(false)
+model Producto {
+  id              String                 @id @default(uuid())
+  sucursalId      String
+  sucursal        Sucursal               @relation(fields: [sucursalId], references: [id])
+  nombre          String
+  tipo            TipoArticulo           @default(PLATO) 
+  precio          Decimal                @db.Decimal(10, 2)
   
-  pedidos   Pedido[]
+  areaDespacho    AreaDespacho           @default(COCINA) // Enrutamiento para el KDS
+  
+  controlarStock  Boolean                @default(false)
+  costo           Decimal                @default(0) @db.Decimal(10, 2)
+  stock           Int                    @default(0)
+  stockMinimo     Int                    @default(0)      // Para alertas visuales
+  disponibleHoy   Boolean                @default(true)
+
+  imagenUrl       String?
+  
+  categoriaId     String
+  categoria       Categoria              @relation(fields: [categoriaId], references: [id])
+  
+  creadoEn        DateTime               @default(now())
+  actualizado     DateTime               @updatedAt
+  eliminadoEn     DateTime?
+
+  detallesPedido  DetallePedido[]
+  movimientos     MovimientoInventario[]
+  menusSegundo    MenuDia[]              @relation("MenuSegundo")
+  menusEntrada    MenuEntrada[]
+}
+
+model MenuDia {
+  id             String          @id @default(uuid())
+  nombre         String          
+  precio         Decimal         @db.Decimal(10, 2)
+  
+  segundoId      String
+  segundo        Producto        @relation("MenuSegundo", fields: [segundoId], references: [id])
+  
+  activo         Boolean         @default(true)
+  creadoEn       DateTime        @default(now())
+  actualizado    DateTime        @updatedAt
+
+  entradas       MenuEntrada[]
+  detallesPedido DetallePedido[]
+}
+
+model MenuEntrada {
+  id          String   @id @default(uuid())
+  menuId      String
+  productoId  String   
+  
+  menu        MenuDia  @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  producto    Producto @relation(fields: [productoId], references: [id])
+}
+
+// ==========================================
+// 4. OPERACIÓN EN SALÓN Y PEDIDOS
+// ==========================================
+
+model Mesa {
+  id          String       @id @default(uuid())
+  sucursalId  String
+  sucursal    Sucursal     @relation(fields: [sucursalId], references: [id])
+  numero      String       @db.VarChar(10)
+  capacidad   Int
+  ocupada     Boolean      @default(false)
+  salon       String       @default("Principal")
+  
+  creadoEn    DateTime     @default(now())
+  actualizado DateTime     @updatedAt
+
+  pedidos     PedidoMesa[]
+
+  @@unique([sucursalId, numero]) // El número de mesa es único por sucursal
 }
 
 model Pedido {
-  id        Int          @id @default(autoincrement())
+  id              String         @id @default(uuid())
+  sucursalId      String
+  sucursal        Sucursal       @relation(fields: [sucursalId], references: [id])
   
-  usuarioId Int
-  usuario   Usuario      @relation(fields: [usuarioId], references: [id])
+  usuarioId       String
+  usuario         Usuario        @relation(fields: [usuarioId], references: [id])
   
-  clienteId Int?
-  cliente   Cliente?     @relation(fields: [clienteId], references: [id])
+  clienteId       String?        // Para cuentas corrientes personales
+  cliente         Cliente?       @relation(fields: [clienteId], references: [id])
 
-  mesaId    Int?
-  mesa      Mesa?        @relation(fields: [mesaId], references: [id])
+  convenioId      String?        // Reemplaza a empresaId para respetar el límite diario
+  convenio        ConvenioTrabajador? @relation(fields: [convenioId], references: [id])
 
-  esCredito Boolean      @default(false)
-  empresaId Int?
-  empresa   Empresa?     @relation(fields: [empresaId], references: [id])
-
-  tipo      TipoPedido   @default(MESA)
-  direccion String?
+  tipo            TipoPedido     @default(MESA)
+  direccion       String?
   
-  estado    EstadoPedido @default(PENDIENTE)
-  total     Decimal      @db.Decimal(10, 2)
-  fecha     DateTime     @default(now())
+  estado          EstadoPedido   @default(PENDIENTE)
+  motivoAnulacion String?        // Auditoría de cancelaciones
   
-  detalles  DetallePedido[]
-  pagos     Pago[]
+  total           Decimal        @db.Decimal(10, 2)
+  fecha           DateTime       @default(now())
+  creadoEn        DateTime       @default(now())
+  actualizado     DateTime       @updatedAt
+  
+  estadoPago      EstadoPago     @default(POR_COBRAR)
 
-  estadoPago      EstadoPago @default(POR_COBRAR)
+  mesas           PedidoMesa[]   // Relación N:M para permitir fusión de mesas
+  detalles        DetallePedido[]
+  pagos           Pago[]
+
+  @@index([sucursalId, fecha])
+}
+
+model PedidoMesa {
+  pedidoId String
+  mesaId   String
+  
+  pedido   Pedido @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  mesa     Mesa   @relation(fields: [mesaId], references: [id], onDelete: Cascade)
+
+  @@id([pedidoId, mesaId])
 }
 
 enum TipoPedido {
@@ -172,61 +293,94 @@ enum EstadoPago {
 }
 
 model DetallePedido {
-  id             Int      @id @default(autoincrement())
-  pedidoId       Int
-  productoId     Int
+  id             String          @id @default(uuid())
+  pedidoId       String
+  productoId     String?
   cantidad       Int
-  precioUnitario Decimal  @db.Decimal(10, 2)
-  notas          String?
-
-  detallePadreId Int?           
-  detallePadre   DetallePedido? @relation("PadreHijo", fields: [detallePadreId], references: [id])
+  precioUnitario Decimal         @db.Decimal(10, 2)
+  notas          String?         // Instrucciones para cocina (ej. "Sin cebolla")
+  
+  detallePadreId String?           
+  detallePadre   DetallePedido?  @relation("PadreHijo", fields: [detallePadreId], references: [id])
   hijos          DetallePedido[] @relation("PadreHijo")
 
-  pedido         Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
-  producto       Producto @relation(fields: [productoId], references: [id])
+  menuId         String?
+  menu           MenuDia?        @relation(fields: [menuId], references: [id])
+
+  pedido         Pedido          @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  producto       Producto?       @relation(fields: [productoId], references: [id])
+  
+  creadoEn       DateTime        @default(now())
+  actualizado    DateTime        @updatedAt
 }
 
+// ==========================================
+// 5. CAJA, PAGOS Y FINANZAS
+// ==========================================
+
 model CajaDiaria {
-  id            Int       @id @default(autoincrement())
-  usuarioId     Int       
+  id            String    @id @default(uuid())
+  sucursalId    String
+  sucursal      Sucursal  @relation(fields: [sucursalId], references: [id])
+  
+  usuarioId     String       
   fechaApertura DateTime  @default(now())
   fechaCierre   DateTime?
   montoInicial  Decimal   @db.Decimal(10, 2)
   montoFinal    Decimal?  @db.Decimal(10, 2)
-  observaciones String?
+  observaciones String?   // Descuadres (Cierre ciego)
   estado        Boolean   @default(true)
   
+  creadoEn      DateTime  @default(now())
+  actualizado   DateTime  @updatedAt
+
   usuario       Usuario   @relation(fields: [usuarioId], references: [id])
   
   pagos         Pago[]
   gastos        Gasto[]
 }
 
+model CategoriaGasto {
+  id          String    @id @default(uuid())
+  sucursalId  String?   // Opcional si las categorías son globales para la empresa
+  nombre      String    @unique
+  esCosto     Boolean   @default(false)
+  
+  gastos      Gasto[]
+}
+
 model Gasto {
-  id          Int         @id @default(autoincrement())
-  descripcion String
-  monto       Decimal     @db.Decimal(10, 2)
-  fecha       DateTime    @default(now())
-  categoria   String
+  id              String         @id @default(uuid())
+  sucursalId      String
+  sucursal        Sucursal       @relation(fields: [sucursalId], references: [id])
   
-  esCosto     Boolean     @default(false)
+  descripcion     String
+  monto           Decimal        @db.Decimal(10, 2)
+  fecha           DateTime       @default(now())
   
-  usuarioId   Int?
-  usuario     Usuario?    @relation(fields: [usuarioId], references: [id])
+  categoriaId     String
+  categoria       CategoriaGasto @relation(fields: [categoriaId], references: [id])
   
-  cajaId      Int?      
-  caja        CajaDiaria? @relation(fields: [cajaId], references: [id])
+  usuarioId       String?
+  usuario         Usuario?       @relation(fields: [usuarioId], references: [id])
+  
+  cajaId          String?
+  caja            CajaDiaria?    @relation(fields: [cajaId], references: [id])
+  
+  creadoEn        DateTime       @default(now())
+  actualizado     DateTime       @updatedAt
+
+  @@index([sucursalId, fecha])
 }
 
 model Pago {
-  id              Int        @id @default(autoincrement())
-  pedidoId        Int
-  cajaId          Int
+  id              String     @id @default(uuid())
+  pedidoId        String
+  cajaId          String?    // ← agregado el ?
   monto           Decimal    @db.Decimal(10, 2)
   metodo          MetodoPago
   fecha           DateTime   @default(now())
-  
+
   comprobanteUrl  String?
   tipoComprobante String?
   serie           String?
@@ -234,8 +388,11 @@ model Pago {
   sunatEstado     String?
   codigoOperacion String?
   
+  creadoEn        DateTime   @default(now())
+  actualizado     DateTime   @updatedAt
+
   pedido          Pedido     @relation(fields: [pedidoId], references: [id])
-  caja            CajaDiaria @relation(fields: [cajaId], references: [id])
+  caja            CajaDiaria? @relation(fields: [cajaId], references: [id]) // ← también el ?
 }
 
 enum MetodoPago {
@@ -246,15 +403,22 @@ enum MetodoPago {
   CREDITO_PERSONAL
 }
 
+// ==========================================
+// 6. CONTROL DE INVENTARIO
+// ==========================================
+
 model MovimientoInventario {
-  id            Int            @id @default(autoincrement())
-  productoId    Int
+  id            String         @id @default(uuid())
+  productoId    String
   tipo          TipoMovimiento
   cantidad      Int
   fecha         DateTime       @default(now())
-  motivo        String?        
+  motivo        String?
   costoUnitario Decimal?       @db.Decimal(10, 2)
   
+  creadoEn      DateTime       @default(now())
+  actualizado   DateTime       @updatedAt
+
   producto      Producto       @relation(fields: [productoId], references: [id], onDelete: Cascade)
 }
 
